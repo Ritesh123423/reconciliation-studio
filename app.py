@@ -60,12 +60,16 @@ def init_db():
         admin_user = os.environ.get("ADMIN_USERNAME")
         admin_pass = os.environ.get("ADMIN_PASSWORD")
         if admin_user and admin_pass:
-            conn.execute(
-                "INSERT INTO users (username, password_hash, is_admin) VALUES (?, ?, 1)",
-                (admin_user, generate_password_hash(admin_pass)),
-            )
-            conn.commit()
-            app.logger.warning("Seeded initial admin user '%s'.", admin_user)
+            try:
+                conn.execute(
+                    "INSERT INTO users (username, password_hash, is_admin) VALUES (?, ?, 1)",
+                    (admin_user, generate_password_hash(admin_pass)),
+                )
+                conn.commit()
+                app.logger.warning("Seeded initial admin user '%s'.", admin_user)
+            except sqlite3.IntegrityError:
+                # Another worker process won the race to seed the first admin; fine.
+                pass
         else:
             app.logger.warning(
                 "No users exist yet and ADMIN_USERNAME/ADMIN_PASSWORD are not set - "
