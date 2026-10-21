@@ -3024,12 +3024,10 @@ function readStatement(pages,opts){
   for(const b of blocks){
     const row=[...b.an.row, ...b.frag.filter(f=>Math.abs(f.y-b.an.y)<=9&&false)];
     const rc=b.an.row;
-    // "DB" means the account is overdrawn by this much - a liability, the opposite of the usual asset-style balance -
-    // so a credit should shrink this magnitude and a debit should grow it, the reverse of a normal account. Rather
-    // than carry that exception through every balance check below, the magnitude is negated here, once, the moment
-    // it is read, so every running-balance check downstream can keep assuming the one ordinary rule (credit raises
-    // the balance, debit lowers it) and still come out right for an account that is in overdraft throughout
-    const balDB=/\bDB\b/i.test(b.an.a.s); const bal=(v=>v==null?null:(balDB?-v:v))(toNum(b.an.a.s));
+    // the balance is kept exactly as the bank prints it, including on an account that is marked "DB" (overdrawn) -
+    // that mark is cosmetic and does not by itself change which way a credit or a debit moves the balance (see the
+    // isLoanAcct check below, which is what actually decides that)
+    const bal=toNum(b.an.a.s);
     const dateTest=c=>DATE_RE.test(c.s)||DATE_RE_HEAD.test(c.s);
     const dates=rc.filter(dateTest).sort((a,b)=>a.x-b.x); const fdates=b.frag.filter(dateTest);
     let dc=null; if(dateX!=null){ dc=dates.slice().sort((p,q)=>Math.abs(p.x-dateX)-Math.abs(q.x-dateX))[0]; } if(!dc) dc=dates[0]; if(!dc&&fdates.length) dc=fdates[0];
@@ -3054,12 +3052,26 @@ function readStatement(pages,opts){
     const narr=joinLines(lines).join(' ').replace(/\s+/g,' ').replace(/\s*(Debit Count|Credit Count|Total Debit|Total Credit|Closing Balance|Page Total).*$/i,'').trim(); const ref=joinLines(refs).join(' ').replace(/\s+/g,' ').trim();
     txns.push({date:dc?toDay(dc.s):null,dateTxt:dc?dc.s:null,narr,ref,amt,dir,bal,y:b.an.y,page:allAnch.indexOf(b.page)+1,x:b.an.a.x});
   }
-  return finalize(txns,{meta,warns,cols,centered,ocr:!!opts.ocr});
+  // a loan/ECB-style account is tracked as the amount still outstanding: a drawdown (a real debit) grows that
+  // figure and a repayment (a real credit) shrinks it, the reverse of an ordinary account (even one that is
+  // itself in overdraft and so also prints a "DB" mark - that mark alone does not say which kind of account this
+  // is, so it is not used here; this statement's own column headings - Withdrawal/Deposit, Debit/Credit - are
+  // already unambiguous and need no correction, unlike an HDFC ledger export of this same data - see readExcelStatement)
+  const isLoanAcct=/\bECB\b|external commercial borrow|term loan/i.test(pageCells.map(cs=>cs.map(c=>c.s).join(' ')).join(' \n '));
+  return finalize(txns,{meta,warns,cols,centered,ocr:!!opts.ocr,pol:isLoanAcct?-1:1});
 }
 
 
 function finalize(raw,ctx){
   const warns=ctx.warns.slice(); let repaired=0,dateFix=0;
+  // the balance is read and kept exactly as the bank prints it (a positive magnitude) even on an account that is
+  // normally in overdraft or is a loan's amount-outstanding - but on such an account a credit *reduces* that printed
+  // figure and a debit *grows* it, the reverse of an ordinary account where a credit grows the balance. `pol` is
+  // that reversal: +1 for an ordinary account, -1 for one whose balance is read this way (the caller works this out
+  // from the statement's own wording, e.g. a trailing "DB", before calling this). Every running-balance check below
+  // is written in terms of `pol` so the one rule set works for both kinds of account without the figure itself ever
+  // needing a sign flip - what is on screen and in the export always matches the number on the statement.
+  const pol=ctx.pol===-1?-1:1;
   if(ctx.ocr){ const ok=raw.filter(x=>x.date!=null).map(x=>x.date).sort((a,b)=>a-b); const lo=ok.length?ok[Math.floor(ok.length*0.03)]-2:null, hi=ok.length?ok[Math.ceil(ok.length*0.97)-1]+2:null; let prev=null; for(const x of raw){ if(x.date!=null&&(lo==null||(x.date>=lo&&x.date<=hi))){ prev=x.date; } else if(x.amt!=null&&x.bal!=null&&x.dateTxt){ if(prev!=null){ x.date=prev; x.dateTxt=null; dateFix++; } } } }
   let t=raw.filter(x=>x.date!=null&&x.bal!=null&&(x.amt!=null||ctx.ocr));
   const dropped=raw.length-t.length;
@@ -3068,34 +3080,34 @@ function finalize(raw,ctx){
   if(dec>inc) t=t.slice().reverse();
   // a scan can lose the figure of a line but keep its balance: the figure is then the change in balance
   if(ctx.ocr){ const keep=[]; for(let i=0;i<t.length;i++){ const x=t[i]; if(x.amt==null){ if(i===0||t[i-1].bal==null){ continue; } const d=Math.round((x.bal-t[i-1].bal)*100)/100; if(d===0) continue; x.amt=Math.abs(d); x.dir=d>0?'C':'D'; x.fixed=true; } keep.push(x); } t=keep; }
-  const link=(p,x)=>{ const d=Math.round((x.bal-p.bal)*100)/100; const a=Math.round(x.amt*100)/100; return Math.abs(Math.abs(d)-a)<0.011?(d>0?'C':'D'):null; };
+  const link=(p,x)=>{ const d=Math.round((x.bal-p.bal)*100)/100; const a=Math.round(x.amt*100)/100; return Math.abs(Math.abs(d)-a)<0.011?((d>0)===(pol>0)?'C':'D'):null; };
   // the bank can print same-day lines in a different order from the balances (fixed deposit redemptions): then the figures are
   // proved day by day - the day's closing balance must equal the day before plus that day's credits less debits
-  const dayCheck=arr=>{ if(arr.length<2||arr.some(x=>!x.dir||x.amt==null||x.bal==null)) return false; const R=v=>Math.round(v*100)/100; const sg=x=>x.dir==='C'?x.amt:-x.amt; let cum=R(arr[0].bal-sg(arr[0])); let i=0,groups=0,off=0,lastOff=false; while(i<arr.length){ let j=i; while(j<arr.length&&arr[j].date===arr[i].date){ cum=R(cum+sg(arr[j])); j++; } groups++; lastOff=Math.abs(cum-arr[j-1].bal)>0.011; if(lastOff) off++; i=j; } return !lastOff&&off<=Math.max(3,Math.floor(groups*0.1)); };
+  const dayCheck=arr=>{ if(arr.length<2||arr.some(x=>!x.dir||x.amt==null||x.bal==null)) return false; const R=v=>Math.round(v*100)/100; const sg=x=>pol*(x.dir==='C'?x.amt:-x.amt); let cum=R(arr[0].bal-sg(arr[0])); let i=0,groups=0,off=0,lastOff=false; while(i<arr.length){ let j=i; while(j<arr.length&&arr[j].date===arr[i].date){ cum=R(cum+sg(arr[j])); j++; } groups++; lastOff=Math.abs(cum-arr[j-1].bal)>0.011; if(lastOff) off++; i=j; } return !lastOff&&off<=Math.max(3,Math.floor(groups*0.1)); };
   const dayProof=t.length>3&&dayCheck(t)&&!t.slice(1).every((x,k)=>Math.abs(Math.abs(x.bal-t[k].bal)-x.amt)<0.011);
   // rows at either end that do not follow the running balance are headings, totals or page notes
   let junk=0; if(!dayProof){ for(let k=0;k<8&&t.length>3&&!link(t[0],t[1])&&link(t[1],t[2]);k++){ t.shift(); junk++; } for(let k=0;k<8&&t.length>3&&!link(t[t.length-2],t[t.length-1])&&link(t[t.length-3],t[t.length-2]);k++){ t.pop(); junk++; } }
-  if(ctx.ocr&&t.length>3&&!dayProof){ const R2=v=>Math.round(v*100)/100; const lk=(p,x)=>Math.abs(Math.abs(R2(x.bal-p.bal))-R2(x.amt))<0.011; const sg=x=>x.dir==='C'?1:-1;
+  if(ctx.ocr&&t.length>3&&!dayProof){ const R2=v=>Math.round(v*100)/100; const lk=(p,x)=>Math.abs(Math.abs(R2(x.bal-p.bal))-R2(x.amt))<0.011; const sg=x=>pol*(x.dir==='C'?1:-1);
     for(let pass=0;pass<2;pass++) for(let i=1;i<t.length;i++){ if(lk(t[i-1],t[i])&&(i+1>=t.length||lk(t[i],t[i+1]))) continue; const x=t[i], p=t[i-1], nx=t[i+1]; const save={amt:x.amt,bal:x.bal,dir:x.dir};
       const ok=()=>lk(p,x)&&(!nx||lk(x,nx));
       // 1. the figure is wrong, the balance is right
-      if(!nx||lk(x,nx)){ const d=R2(x.bal-p.bal); if(d!==0){ x.amt=Math.abs(d); x.dir=d>0?'C':'D'; if(ok()){ x.fixed=true; repaired++; continue; } x.amt=save.amt; x.dir=save.dir; } }
+      if(!nx||lk(x,nx)){ const d=R2(x.bal-p.bal); if(d!==0){ x.amt=Math.abs(d); x.dir=(d>0)===(pol>0)?'C':'D'; if(ok()){ x.fixed=true; repaired++; continue; } x.amt=save.amt; x.dir=save.dir; } }
       // 2. the balance is wrong, the figure is right
       if(x.dir){ x.bal=R2(p.bal+sg(x)*x.amt); if(ok()){ x.fixed=true; repaired++; continue; } x.bal=save.bal; }
       // 3. both are wrong, the next line is right: its balance less its figure is this line's balance
-      if(nx&&lk(nx,t[i+2]||nx)||(nx&&!t[i+2])){ const nb=R2(nx.bal-(nx.dir==='C'?nx.amt:-nx.amt)); const d=R2(nb-p.bal); if(d!==0){ x.bal=nb; x.amt=Math.abs(d); x.dir=d>0?'C':'D'; if(ok()){ x.fixed=true; repaired++; continue; } } x.amt=save.amt; x.bal=save.bal; x.dir=save.dir; } } }
+      if(nx&&lk(nx,t[i+2]||nx)||(nx&&!t[i+2])){ const nb=R2(nx.bal-pol*(nx.dir==='C'?nx.amt:-nx.amt)); const d=R2(nb-p.bal); if(d!==0){ x.bal=nb; x.amt=Math.abs(d); x.dir=(d>0)===(pol>0)?'C':'D'; if(ok()){ x.fixed=true; repaired++; continue; } } x.amt=save.amt; x.bal=save.bal; x.dir=save.dir; } } }
   let bad=0,fixed=0; const badAt=[];
   for(let i=0;i<t.length;i++){ const x=t[i]; if(i===0){ x.chain=null; continue; } const nd=link(t[i-1],x); if(nd){ if(x.dir!==nd){ x.dir=nd; fixed++; } x.chain=true; } else { x.chain=false; bad++; if(badAt.length<20) badAt.push(i); } }
   if(t.length&&!t[0].dir&&t.length>1){ const nd=link(t[0],t[1]); }
-  const first=t[0]; const opening=first&&first.dir?Math.round((first.bal-(first.dir==='C'?first.amt:-first.amt))*100)/100:null; const closing=t.length?t[t.length-1].bal:null;
+  const first=t[0]; const opening=first&&first.dir?Math.round((first.bal-pol*(first.dir==='C'?first.amt:-first.amt))*100)/100:null; const closing=t.length?t[t.length-1].bal:null;
   let dr=0,cr=0; for(const x of t){ if(x.dir==='C') cr+=x.amt; else dr+=x.amt; } dr=Math.round(dr*100)/100; cr=Math.round(cr*100)/100;
-  const verified=t.length>0&&(bad===0||dayProof)&&opening!=null&&Math.abs(Math.round((opening+cr-dr)*100)/100-closing)<0.011;
+  const verified=t.length>0&&(bad===0||dayProof)&&opening!=null&&Math.abs(Math.round((opening+pol*(cr-dr))*100)/100-closing)<0.011;
   if(verified&&bad&&dayProof) warns.push('On '+bad+' line(s) the bank prints the balance in a different order from the transactions of that day (common on fixed deposit days); the day-by-day running total was checked and agrees.');
   if(!verified) warns.push(bad?bad+' line(s) do not follow the running balance (first at line '+(badAt[0]+1)+').':'The opening balance plus credits less debits does not equal the closing balance.');
   if(repaired) warns.push(repaired+' figure(s) misread by the scan were put right from the running balance.');
   if(dateFix) warns.push(dateFix+' date(s) that the scan could not read take the date of the line above.');
   if(dropped+junk) warns.push((dropped+junk)+' row(s) that are not transactions (headings, totals, page notes) were left out.');
-  return {raw,txns:t,meta:ctx.meta,warns,cols:ctx.cols,centered:ctx.centered,opening,closing,debit:dr,credit:cr,verified,chainBad:bad,fixed,repaired,dateFix,dropped:dropped+junk};
+  return {raw,txns:t,meta:ctx.meta,warns,cols:ctx.cols,centered:ctx.centered,opening,closing,debit:dr,credit:cr,verified,chainBad:bad,fixed,repaired,dateFix,dropped:dropped+junk,pol};
 }
 root.BSAPARSE={cellsOf,findColumns,readStatement,finalize,toDay,toNum,DATE_RE,AMT_RE};
 })(typeof window!=='undefined'?window:globalThis);
@@ -3231,7 +3243,13 @@ async function readExcelStatement(file){
   const dayOf=v=>{ if(typeof v==='number') return Math.floor(v)-25569; const m=/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/.exec(String(v==null?'':v).trim()); if(!m) return null; let y=+m[3]; if(y<100) y+=2000; return Math.round(Date.UTC(y,+m[2]-1,+m[1])/86400000); };
   { let h=-1,cc={}; for(let r=0;r<Math.min(rows.length,30)&&h<0;r++){ const row=(rows[r]||[]).map(v=>String(v==null?'':v).trim().toLowerCase()); const di=row.findIndex(v=>/^(txn date|transaction date|tran date|date)$/.test(v)), dc=row.findIndex(v=>/^(dr\s*\/\s*cr|cr\s*\/\s*dr|type)$/.test(v)), ai=row.findIndex(v=>/^amount( \(inr\))?$/.test(v)), bi=row.findIndex(v=>/^(running total|running balance|balance|closing balance)$/.test(v)), ni=row.findIndex(v=>/^(description|narration|particulars|transaction details)$/.test(v)), ri=row.findIndex(v=>/^(cheque no|chq\.?\/?ref\.?no\.?|reference|ref no)/.test(v)); if(di>=0&&dc>=0&&ai>=0&&bi>=0){ h=r; cc={d:di,t:dc,a:ai,b:bi,n:ni>=0?ni:2,r:ri}; } }
     if(h>=0){ const raw=[]; for(let i=h+1;i<rows.length;i++){ const row=rows[i]||[]; let d=dayOf(row[cc.d]); if(d==null&&(row[cc.d]==null||row[cc.d]==='')){ const pv=rows[i-1]||[]; d=dayOf(pv[cc.d+1]); if(d==null) d=dayOf(row[cc.d+1]); } const a=num(row[cc.a]), b=num(row[cc.b]); const t=String(row[cc.t]==null?'':row[cc.t]).trim().toUpperCase()[0]; if(d==null||a==null||b==null||(t!=='C'&&t!=='D')) continue; raw.push({date:d,dateTxt:'x',narr:String(row[cc.n]==null?'':row[cc.n]).trim(),ref:cc.r>=0&&row[cc.r]?String(row[cc.r]):'',amt:Math.abs(a),dir:t,bal:b}); }
-      const r=P.finalize(raw,{meta:{},warns:[],cols:null,centered:false,ocr:false}); return {meta:{bank:bank||'HDFC',account,client},r}; } }
+      // this export's own "Running Total"/"Running Balance" column carries no textual mark for an overdrawn account
+      // the way the bank's PDF or Excel statement does (no "DR"/"DB"), so there is nothing to read the direction
+      // from directly - try the ordinary direction first and only fall back to the reversed one if the ordinary
+      // reading does not actually prove itself against the statement's own running balance
+      let r=P.finalize(raw,{meta:{},warns:[],cols:null,centered:false,ocr:false,pol:1});
+      if(!r.verified){ const r2=P.finalize(raw,{meta:{},warns:[],cols:null,centered:false,ocr:false,pol:-1}); if(r2.verified||(r2.chainBad||0)<(r.chainBad||0)) r=r2; }
+      return {meta:{bank:bank||'HDFC',account,client},r}; } }
   let hdrRow=-1; const col={};
   for(let r=0;r<Math.min(rows.length,60);r++){ const row=rows[r]||[]; let dateCol=-1,balCol=-1;
     for(let c=0;c<row.length;c++){ const v=String(row[c]==null?'':row[c]).trim().toLowerCase(); if(v==='date') dateCol=c; if(/balance/.test(v)) balCol=c; }
@@ -3243,8 +3261,10 @@ async function readExcelStatement(file){
       break; } }
   if(hdrRow<0) return {meta:{bank,account,client},r:{txns:[],warns:['No table of transactions with a date and balance column was found in this spreadsheet.']}};
   const isSerial=v=>typeof v==='number'&&v>20000&&v<80000; const toEpoch=v=>Math.round(v)-25569;
-  const parseBal=txt=>{ const s=String(txt==null?'':txt); const m=/([\d,]+\.\d{1,2})/.exec(s); if(!m) return null; let v=parseFloat(m[1].replace(/,/g,'')); if(/\bDB\b/i.test(s)) v=-v; return v; };
-  const build=(flip)=>{ const raw=[]; let i=hdrRow+1;
+  // the balance is kept exactly as the bank prints it (never negated or abs()'d - the on-screen table and the
+  // export must show the same number the statement shows)
+  const parseBal=txt=>{ const s=String(txt==null?'':txt); const m=/([\d,]+\.\d{1,2})/.exec(s); if(!m) return null; return parseFloat(m[1].replace(/,/g,'')); };
+  const raw=[]; let crVote=0,drVote=0; { let i=hdrRow+1;
   while(i<rows.length){ const row=rows[i]||[]; const first=row[0];
     if(typeof first==='string'&&/(opening|closing) balance/i.test(first)){ i++; continue; }
     if(isSerial(first)){
@@ -3254,15 +3274,24 @@ async function readExcelStatement(file){
         const extra=rows[j][nCol]; if(extra!=null&&String(extra).trim()!=='') narrParts.push(String(extra).trim());
         j++; }
       const cr=col.cr!=null?row[col.cr]:null, dr=col.dr!=null?row[col.dr]:null;
-      const amt=typeof cr==='number'?cr:(typeof dr==='number'?dr:null); let dir=typeof cr==='number'?'C':'D'; if(flip) dir=dir==='C'?'D':'C';
-      let bal=parseBal(row[col.bal]); if(flip&&bal!=null) bal=Math.abs(bal);
-      raw.push({date:toEpoch(first),dateTxt:'x',narr:narrParts.filter(Boolean).join(' '),ref:'',amt,dir,bal});
+      const amt=typeof cr==='number'?cr:(typeof dr==='number'?dr:null); const dir=typeof cr==='number'?'C':'D';
+      const narrAll=narrParts.filter(Boolean).join(' ');
+      // some HDFC exports of this kind print the bank's own internal "BRct"/"BPmt" (receipt/payment) tag on a
+      // continuation line - a direct, unambiguous statement of which way the money actually moved, independent
+      // of which column the figure happened to print in. If it disagrees with the column the figure was found in,
+      // more often than not the file's own "Credit"/"Debit" column headings are the reverse of what they say
+      // (seen on this export format: an "INTEREST CREDIT"/"BRct" entry sitting in the column headed "Debit")
+      if(/\bBRct\b/i.test(narrAll)){ if(dir==='C') crVote++; else drVote++; } else if(/\bBPmt\b/i.test(narrAll)){ if(dir==='D') crVote++; else drVote++; }
+      raw.push({date:toEpoch(first),dateTxt:'x',narr:narrAll,ref:'',amt,dir,bal:parseBal(row[col.bal])});
       i=j; continue; }
-    i++; }
-  return raw; };
-  // a ledger-style export can show the account the other way round (credit column = money out, "DB" = money in the account): try both ways
-  const fin=raw=>P.finalize(raw,{meta:{},warns:[],cols:null,centered:false,ocr:false});
-  let r=fin(build(false)); { const r2=fin(build(true)); const sc=q=>(q.verified?4:0)-Math.min(2,(q.chainBad||0))+((q.opening!=null&&q.opening>=0&&q.closing>=0)?2:0); if(sc(r2)>sc(r)) r=r2; }
+    i++; } }
+  if(drVote>crVote) for(const x of raw) x.dir=x.dir==='C'?'D':'C';
+  // a loan/ECB-style account is tracked as the amount still outstanding, not as cash in hand: a drawdown (a real
+  // debit) grows that figure and a repayment (a real credit) shrinks it - the reverse of an ordinary account,
+  // and not something the Credit/Debit columns themselves ever get swapped over (see the vote above, which is
+  // for that separate, column-labelling fault and does not apply here)
+  const isLoanAcct=/\bECB\b|external commercial borrow|term loan/i.test(headText);
+  const r=P.finalize(raw,{meta:{},warns:[],cols:null,centered:false,ocr:false,pol:isLoanAcct?-1:1});
   return {meta:{bank:bank||'HDFC',account,client},r};
 }
 
@@ -3286,7 +3315,7 @@ async function addFiles(list,notes){
         }
         if(!r.txns.length&&r.zeroActivity){ const f0={id:uid(),name:nm,size:file.size,pages:pages.length,client:meta.client||guessClient(nm),clientGuessed:!meta.client,bank:meta.bank,account:meta.account,from:null,to:null,n:0,opening:r.opening,closing:r.closing,debit:0,credit:0,verified:r.verified,ocr:rp.ocrN,fixedN:0,warns:['No transactions in this period.'],zeroActivity:true,txns:[]}; B.files.push(f0); await saveTxns(f0); ok++; continue; }
         if(!r.txns.length){ bad.push(nm.split('/').pop()+': '+(r.warns[0]||'no transactions found')); continue; }
-        const f={id:uid(),name:nm,size:file.size,pages:pages.length,client:meta.client||guessClient(nm),clientGuessed:!meta.client,bank:meta.bank,account:meta.account,from:r.txns[0].date,to:r.txns[r.txns.length-1].date,n:r.txns.length,opening:r.opening,closing:r.closing,debit:r.debit,credit:r.credit,verified:r.verified,sumOk:!!r.sumOk,ocr:rp.ocrN,fixedN:r.repaired||0,warns:(rp.ocrN?[rp.ocrN+' page(s) were pictures of the statement and were read by OCR. Figures the scan misread were put right from the running balance (lines marked Corrected). Compare with the original before relying on a corrected line.']:[]).concat(r.warns),txns:r.txns.map((t,k)=>({d:t.date,n:t.narr,r:t.ref,a:t.amt,t:t.dir,b:t.bal,q:k,x:t.fixed?1:0}))};
+        const f={id:uid(),name:nm,size:file.size,pages:pages.length,client:meta.client||guessClient(nm),clientGuessed:!meta.client,bank:meta.bank,account:meta.account,from:r.txns[0].date,to:r.txns[r.txns.length-1].date,n:r.txns.length,opening:r.opening,closing:r.closing,debit:r.debit,credit:r.credit,verified:r.verified,sumOk:!!r.sumOk,pol:r.pol||1,ocr:rp.ocrN,fixedN:r.repaired||0,warns:(rp.ocrN?[rp.ocrN+' page(s) were pictures of the statement and were read by OCR. Figures the scan misread were put right from the running balance (lines marked Corrected). Compare with the original before relying on a corrected line.']:[]).concat(r.warns),txns:r.txns.map((t,k)=>({d:t.date,n:t.narr,r:t.ref,a:t.amt,t:t.dir,b:t.bal,q:k,x:t.fixed?1:0}))};
         B.files.push(f); await saveTxns(f); ok++; }
       catch(e){ console.error(e); bad.push(nm.split('/').pop()+': '+(e&&e.message?e.message:'an unexpected error happened while reading this file - see the browser console for detail')); } }
     // a file that carries no account number or client name (a CSV, or a scan whose heading the OCR garbled) is the same account as a text/sheet file with the same opening and closing balance
@@ -3340,7 +3369,15 @@ function categoryOf(n,dir){ const u=String(n||'').toUpperCase(); for(const [name
 // them rather than blindly taking the first few words (which used to grab "INF INFT TRF" and the like, and - worse -
 // grab a *different* three noise words for every slightly different narration of the very same real vendor, so a
 // rule set once on the Classify tab for one phrasing silently failed to apply to the next)
-const PARTY_STOP=new Set(['INF','INFT','NEFT','RTGS','IMPS','UPI','ACH','TRF','TRFR','ECS','NACH','CLG','CTS','TO','FROM','REF','REFNO','UTR','BULK','ATTN','PMT','TXN','TRANSFER','BY','VIA','NO','NUMBER','TRANSACTION','PAYMENT','RECEIVED','SENT','ONLINE','FUND','FUNDS','MODE','ID']);
+const PARTY_STOP=new Set(['INF','INFT','NEFT','RTGS','IMPS','UPI','ACH','TRF','TRFR','ECS','NACH','CLG','CTS','TO','FROM','REF','REFNO','UTR','BULK','ATTN','PMT','TXN','TRANSFER','BY','VIA','NO','NUMBER','TRANSACTION','PAYMENT','RECEIVED','SENT','ONLINE','FUND','FUNDS','MODE','ID',
+  // generic corporate words: on their own ("HDFC BANK LTD") these rarely tell two different counterparties apart,
+  // and if they are the first few words of a longer name the slice below would otherwise stop right there and
+  // never reach the part that actually distinguishes this counterparty from any other (e.g. "...- ESCROW A/C IREDA"
+  // right after "HDFC BANK LTD" is what says this is a specific related account, not just any payment to the bank)
+  'BANK','LTD','LIMITED','PVT','PRIVATE',
+  // the bank's own internal receipt/payment tag, folded into the narration upstream only so the column-swap check
+  // above can see it - it is not part of anyone's name and must never leak into a vendor label
+  'BRCT','BPMT']);
 function partyOf(n,dir){ let s=''; const u=String(n||'');
   // government payment-gateway codes that unambiguously name the real counterparty even though that counterparty's
   // name never appears as text in the narration at all - these are RBI's own fixed routing codes for remittances to
@@ -3363,7 +3400,7 @@ function partyOf(n,dir){ let s=''; const u=String(n||'');
   if(!s){ let m=/^(?:NEFT|RTGS|IMPS)[\s\S]{0,6}?-[A-Z0-9]{8,}-([^-]{3,40})/i.exec(u); if(m) s=m[1]; }
   // "TRF TO:<name>", "TRFR TO <name>", "TRANSFER FROM <name>" - the bank states the counterparty outright
   if(!s){ let m=/\b(?:TRFR?|TRANSFER)\s+(?:TO|FROM)\s*[:\-]?\s*([A-Za-z][A-Za-z0-9 &.,'()\/\-]{2,40})/i.exec(u); if(m) s=m[1]; }
-  if(!s){ const words=u.replace(/[0-9]{4,}/g,' ').replace(/[^A-Za-z ]/g,' ').split(/\s+/).filter(Boolean); const kept=words.filter(w=>!PARTY_STOP.has(w.toUpperCase())); s=(kept.length?kept:words).slice(0,3).join(' '); }
+  if(!s){ const words=u.replace(/[0-9]{4,}/g,' ').replace(/[^A-Za-z ]/g,' ').split(/\s+/).filter(Boolean); const kept=words.filter(w=>!PARTY_STOP.has(w.toUpperCase())); s=(kept.length?kept:words).slice(0,4).join(' '); }
   }
   return s.replace(/\s+/g,' ').trim().toUpperCase().slice(0,32)||'(no name)'; }
 const acctShort=f=>(f.bank?f.bank+' ':'')+(f.account?'x'+String(f.account).replace(/\D/g,'').slice(-4):'');
@@ -3411,11 +3448,12 @@ function analyse(){
   // per account and client figures
   const out={accts:[...accts.values()],clients:CL,T,IB,RV};
   for(const a of out.accts){ const t=a.txns; a.from=t.length?t[0].date:null; a.to=t.length?t[t.length-1].date:null;
+    a.pol=(a.files.find(f=>f.pol)||{}).pol||1;
     if(pf!=null||pt!=null){
       // a period is in force: "opening" must mean the balance just before the first transaction *of this period*,
       // not the file's own opening balance - otherwise narrowing to a later month would still show January's
       // opening, which is not what "only use this period" promised
-      a.opening=t.length?Math.round((t[0].bal-(t[0].dir==='C'?t[0].amt:-t[0].amt))*100)/100:null; a.closing=t.length?t[t.length-1].bal:null;
+      a.opening=t.length?Math.round((t[0].bal-a.pol*(t[0].dir==='C'?t[0].amt:-t[0].amt))*100)/100:null; a.closing=t.length?t[t.length-1].bal:null;
     } else {
       const realF=a.files.filter(f=>f.from!=null&&f.to!=null); const pickF=realF.length?realF:a.files; a.opening=pickF.slice().sort((p,q)=>p.from-q.from)[0].opening; a.closing=pickF.slice().sort((p,q)=>q.to-p.to)[0].closing;
     }
@@ -3551,11 +3589,15 @@ async function exportXlsx(btn){ const r=B.res; if(!r) return; btn.disabled=true;
       ws.getCell('S'+(hdr-1)).value='KGS Remarks'; ws.getCell('T'+(hdr-1)).value='Management Remarks, if any'; ['S','T'].forEach(k=>{ ws.getCell(k+(hdr-1)).font=FB; });
       cols.forEach((t,i)=>{ const cell=ws.getCell(hdr,2+i); cell.value=t; Object.assign(cell,HDR); }); ws.getRow(hdr).height=32;
       let row=hdr+1, sl=1; const first=row;
-      accts.forEach((a,ai)=>{ let w1=a.opening||0; a.txns.forEach((x,k)=>{ const rr=ws.getRow(row); const D=x.dir==='D'?x.amt:0, C=x.dir==='C'?x.amt:0; w1=Math.round((w1+C-D)*100)/100;
+      accts.forEach((a,ai)=>{ const pol=a.pol||1; let w1=a.opening||0; a.txns.forEach((x,k)=>{ const rr=ws.getRow(row); const D=x.dir==='D'?x.amt:0, C=x.dir==='C'?x.amt:0; w1=Math.round((w1+pol*(C-D))*100)/100;
           const set=(col,v,fmt,wrap)=>{ const cell=rr.getCell(col); cell.value=v; cell.font=F; cell.alignment={vertical:'top',wrapText:!!wrap}; if(fmt) cell.numFmt=fmt; return cell; };
           set(2,sl++); set(3,a.bank||''); set(4,String(a.account||'')); set(5,Number(String(a.account||'').replace(/\D/g,'').slice(-4))||'' ); set(6,mname(mkey(x.date),multiY(c))); set(7,utc(x.date),DF); set(8,x.narr,null,true);
           set(9,D,NF); set(10,C,NF); set(11,x.bal,NF);
-          set(12,{formula:k===0?`$I$${3+ai}+J${row}-I${row}`:`L${row-1}+J${row}-I${row}`,result:w1},NF); set(13,{formula:`ROUND(K${row}-L${row},2)`,result:Math.round((x.bal-w1)*100)/100},NF); set(14,{formula:`J${row}-I${row}`,result:C-D},NF); set(15,{formula:`IF(I${row}>0,"Debit","Credit")`,result:D>0?'Debit':'Credit'});
+          // Working 1 rebuilds the balance in the direction this account actually moves (an ordinary account: a
+          // credit increases it; an account whose statement marks the magnitude "DB" - an overdraft, or a loan's
+          // amount outstanding: a credit decreases it instead) - `pol` carries that, worked out from the statement
+          // itself (see finalize()), so this formula ties to the bank's own Balance column either way
+          set(12,{formula:k===0?(pol>0?`$I$${3+ai}+J${row}-I${row}`:`$I$${3+ai}-J${row}+I${row}`):(pol>0?`L${row-1}+J${row}-I${row}`:`L${row-1}-J${row}+I${row}`),result:w1},NF); set(13,{formula:`ROUND(K${row}-L${row},2)`,result:Math.round((x.bal-w1)*100)/100},NF); set(14,{formula:`J${row}-I${row}`,result:C-D},NF); set(15,{formula:`IF(I${row}>0,"Debit","Credit")`,result:D>0?'Debit':'Credit'});
           set(16,x.vn||x.party,null,true); set(17,x.fc,null,true); set(18,x.sc||'',null,true); if(x.fx) set(19,'Corrected from the running balance after OCR; compare with the original.',null,true);
           row++; }); });
       const last=row-1; const tr=ws.getRow(row+1); tr.getCell(8).value='Total'; tr.getCell(8).font=FB; [[9,'I'],[10,'J']].forEach(([i,L])=>{ const cell=tr.getCell(i); cell.value={formula:`SUBTOTAL(109,${L}${first}:${L}${last})`,result:i===9?c.f.dr:c.f.cr}; cell.numFmt=NF; cell.font=FB; });
