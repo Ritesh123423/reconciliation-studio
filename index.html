@@ -206,6 +206,18 @@ input[type=checkbox],input[type=radio]{accent-color:var(--accent);width:16px;hei
 /* ---------- tables ---------- */
 .scroll{overflow:auto;max-height:none}
 .scroll.nb{overflow-x:auto}
+/* a wide table scrolls horizontally with no native hint that it does - these edge shadows fade out once scrolled
+   past that side, so "there's more this way" is visible without relying on the user to discover a hidden scrollbar */
+.scroll:has(>table.t){
+  background:
+    linear-gradient(to right,var(--page) 30%,rgba(255,255,255,0)) 0 0,
+    linear-gradient(to right,rgba(255,255,255,0),var(--page) 70%) 100% 0,
+    linear-gradient(to right,rgba(18,26,53,.12),rgba(18,26,53,0)) 0 0,
+    linear-gradient(to left,rgba(18,26,53,.12),rgba(18,26,53,0)) 100% 0;
+  background-repeat:no-repeat;
+  background-size:24px 100%,24px 100%,10px 100%,10px 100%;
+  background-attachment:local,local,scroll,scroll;
+}
 table.t{width:100%;border-collapse:separate;border-spacing:0;font-size:13px;color:var(--ink2)}
 table.t th{position:sticky;top:0;z-index:2;background:var(--sunk);text-align:left;vertical-align:middle;
   font-size:11.5px;font-weight:600;color:var(--ink3);text-transform:uppercase;letter-spacing:.055em;white-space:nowrap;
@@ -260,14 +272,14 @@ table.nostick th{position:static}
 .g4{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
 .grid.g4{gap:16px;margin-bottom:22px}
 .grid>.card{margin:0}
-.card.kpi{padding:20px 22px 18px;overflow:hidden;border-radius:var(--r3);
+.card.kpi{padding:20px 22px 18px;overflow:hidden;border-radius:var(--r3);container-type:inline-size;
   transition:transform .22s var(--ease),box-shadow .22s var(--ease),border-color .22s var(--ease)}
 .card.kpi::before{content:"";position:absolute;left:0;top:0;right:0;height:3px;background:var(--ink4);opacity:.7}
 .card.kpi.ok::before{background:linear-gradient(90deg,var(--agree),#37c79c);opacity:1}
 .card.kpi.warn::before{background:linear-gradient(90deg,var(--note),#eab04f);opacity:1}
 .card.kpi.bad::before{background:linear-gradient(90deg,var(--break),#ee7d69);opacity:1}
 .card.kpi:hover{transform:translateY(-3px);box-shadow:var(--sh2);border-color:var(--rule3)}
-.kpi .n{display:block;font-family:var(--fd);font-size:34px;font-weight:600;color:var(--ink);letter-spacing:-.02em;line-height:1.1}
+.kpi .n{display:block;font-family:var(--fd);font-size:clamp(18px,7.5cqi,34px);white-space:nowrap;font-weight:600;color:var(--ink);letter-spacing:-.02em;line-height:1.1}
 .kpi .l{display:block;margin-top:8px;font-size:13px;color:var(--ink3);line-height:1.4}
 .kpi.ok .n{color:var(--agree)} .kpi.warn .n{color:var(--note)} .kpi.bad .n{color:var(--break)}
 
@@ -3041,7 +3053,11 @@ function readStatement(pages,opts){
     // narration and reference
     const frag=b.frag.concat(rc.filter(c=>!AMT_RE.test(c.s)&&!DATE_RE.test(c.s)&&!/^(CR|DR)$/i.test(c.s)&&c!==dc));
     const refFirst=cols.ref&&narrX!=null&&cols.ref.l>narrX+10; // reference column to the right of the narration (HDFC) or to the left (ICICI)
-    const valL=cols.val&&refFirst?cols.val.l:1e9; const limR=Math.min(numStart,valL);
+    // a "value date" column only caps where the narration ends when it actually sits to the right of the narration's
+    // own start (an HDFC-style layout with Narration, then Value Dt, then the reference/cheque column); some banks
+    // (e.g. SBI) print "Value Date" as part of the stacked date-column header on the far left, well before the
+    // narration starts, and capping narration to that position there would wipe out the narration on every line
+    const valL=cols.val&&refFirst&&cols.val.l>narrX?cols.val.l:1e9; const limR=Math.min(numStart,valL);
     const inRef=c=>cols.ref&&narrX!=null?(refFirst?(c.x>=cols.ref.l&&c.x<limR):(c.x>=cols.ref.l&&c.x<narrX-8&&/^[A-Za-z0-9]{6,}$/.test(c.s))):false;
     const inDesc=c=>narrX!=null?(c.x>=narrX-8&&c.x<limR&&!inRef(c)):(dBand?(c.x>=dBand.l&&c.x<dBand.r):true);
     const lines=frag.filter(c=>inDesc(c)&&!inRef(c)).sort((p,q)=>q.y-p.y||p.x-q.x);
@@ -3123,6 +3139,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const inr=(n,d)=>(n==null||isNaN(n))?'':Number(n).toLocaleString('en-IN',{minimumFractionDigits:d==null?2:d,maximumFractionDigits:d==null?2:d});
 const MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const dstr=d=>{ if(d==null) return ''; const t=new Date(d*86400000); return String(t.getUTCDate()).padStart(2,'0')+'-'+MN[t.getUTCMonth()]+'-'+t.getUTCFullYear(); };
+const periodStr=(a,b)=>a==null&&b==null?'<span class="small">No activity</span>':dstr(a)+' to '+dstr(b);
 const mkey=d=>{ const t=new Date(d*86400000); return t.getUTCFullYear()+'-'+String(t.getUTCMonth()+1).padStart(2,'0'); };
 const mlabel=k=>{ const [y,m]=k.split('-'); return MN[+m-1]+' '+y; };
 const cents=x=>Math.round(x*100);
@@ -3418,6 +3435,19 @@ function analyse(){
   for(const a of accts.values()){ a.label=acctShort(a); const seen=new Map(); const rows=[]; for(const f of a.files) for(const t of f.txns){ if(pf!=null&&t.d<pf) continue; if(pt!=null&&t.d>pt) continue; const k=[t.d,t.a,t.t,t.b,String(t.n).slice(0,24)].join('|'); if(seen.has(k)&&seen.get(k)!==f.id){ a.dupes=(a.dupes||0)+1; continue; } if(!seen.has(k)) seen.set(k,f.id); rows.push({t,f}); }
     rows.sort((p,q)=>p.t.d-q.t.d||p.f.id.localeCompare(q.f.id)||p.t.q-q.t.q); a.client=(a.files.find(f=>f.client&&!f.clientGuessed)||a.files[0]).client; a.cn=clientKey(a.client)||a.client;
     for(const {t,f} of rows){ const x={id:id++,acct:a.key,client:a.client,cn:a.cn,label:a.label,bank:a.bank,date:t.d,narr:t.n,ref:t.r,amt:t.a,dir:t.t,bal:t.b,fx:t.x,cat:categoryOf(t.n,t.t),party:null,grp:null,gt:null}; T.push(x); a.txns.push(x); } }
+  // two different real accounts of the same client and bank can end up with the same short label (x9218, x9218...)
+  // purely by chance - the last 4 digits of their full account numbers happen to coincide, even though the accounts
+  // themselves were correctly kept apart throughout (grouped on their last 6 digits, not 4). Shown this way, two
+  // genuinely different accounts become impossible to tell apart anywhere the short label is used - the Statements/
+  // Summary/Monthly tabs and the Excel export's own "Opening Balance - 9218" header line alike. Lengthen the label's
+  // digit count for just the colliding accounts until it is unique again, instead of leaving two accounts to share
+  // one name.
+  { const byClient=new Map(); for(const a of accts.values()){ const ck=clientKey(a.client)||a.client||''; if(!byClient.has(ck)) byClient.set(ck,[]); byClient.get(ck).push(a); }
+    for(const list of byClient.values()){ const groups=new Map(); for(const a of list){ if(!groups.has(a.label)) groups.set(a.label,[]); groups.get(a.label).push(a); }
+      for(const g of groups.values()){ if(g.length<2) continue;
+        for(const a of g){ const digits=String(a.account||'').replace(/\D/g,''); let lbl=a.label;
+          for(let n=5;n<=digits.length;n++){ lbl=(a.bank?a.bank+' ':'')+'x'+digits.slice(-n); if(!g.some(o=>o!==a&&((o.bank?o.bank+' ':'')+'x'+String(o.account||'').replace(/\D/g,'').slice(-n))===lbl)) break; }
+          if(lbl!==a.label){ a.label=lbl; for(const x of a.txns) x.label=lbl; } } } } }
   // user typed client names decide the grouping
   const clients=new Map(); for(const a of accts.values()){ const ck=a.client||'(no client name)'; if(!clients.has(ck)) clients.set(ck,{name:ck,accts:[]}); clients.get(ck).accts.push(a); }
   // merge clients whose first significant words agree (the same client named a little differently by two banks)
@@ -3498,7 +3528,7 @@ function tFiles(el){
   const pSet=B.opts.periodFrom||B.opts.periodTo;
   el.innerHTML=dropBox()+`<div class="card"><div class="hd"><h3>Statements read</h3><span class="small">${B.files.length} file(s)</span><span class="sp"></span><label class="f inline">Match transfers cleared up to <select id="bw"><option value="0">the same day only</option>${[1,2,3].map(n=>`<option value="${n}" ${+B.opts.window===n?'selected':''}>${n} day${n>1?'s':''} later</option>`).join('')}</select></label><label class="f inline"><input type="checkbox" id="bx" ${B.opts.cross?'checked':''}> Also match between different clients</label></div>
   <div class="hd" style="padding-top:0"><label class="f inline">Only use the period <input type="date" id="pf" value="${esc(B.opts.periodFrom||'')}" style="width:148px"></label><label class="f inline">to <input type="date" id="pt" value="${esc(B.opts.periodTo||'')}" style="width:148px"></label>${pSet?`<button id="pClear" class="small">Clear period</button>`:''}<span class="small">${pSet?'A transaction outside this is left out everywhere, as if it had not been uploaded.':'Leave both blank to use every period in what you uploaded.'}</span></div>
-  <div class="bd" style="padding:0">${B.files.length?`<div class="scroll nb"><table class="t"><tr><th>File</th><th>Client</th><th>Bank</th><th>Account</th><th>Period</th><th class="r">Lines</th><th class="r">Opening</th><th class="r">Closing</th><th>Proof</th><th></th></tr>${B.files.map(f=>`<tr><td class="fnm2"><div class="fn1" title="${esc(f.name)}">${esc(f.name.split('/').pop())}</div></td><td class="w"><input type="text" data-f="${f.id}" data-k="client" value="${esc(f.client)}" style="width:220px"></td><td class="w"><input type="text" data-f="${f.id}" data-k="bank" value="${esc(f.bank)}" style="width:110px"></td><td class="w"><input type="text" data-f="${f.id}" data-k="account" value="${esc(f.account)}" style="width:150px"></td><td class="n">${dstr(f.from)} to ${dstr(f.to)}</td><td class="r">${f.n.toLocaleString()}</td><td class="r">${inr(f.opening)}</td><td class="r">${inr(f.closing)}</td><td class="st">${f.ocr&&f.sumOk?`<span class="tag ok" title="Opening, closing, total debits and total credits all equal the figures printed in the statement summary.">Scanned: agrees with printed summary</span><div class="small">${f.ocr} page(s) by OCR${f.fixedN?', '+f.fixedN+' corrected':''}</div>`:f.ocr?`<span class="tag ${f.verified&&(f.fixedN||0)<=0.08*f.n?'warn':'bad'}" title="${esc((f.warns||[]).join(' '))}">${f.verified?((f.fixedN||0)<=0.08*f.n?'Scanned: balances agree, check against the original':'Scanned: many lines corrected, check'):'Scanned: does not agree, check'}</span><div class="small">${f.ocr} page(s) by OCR${f.fixedN?', '+f.fixedN+' corrected':''}</div>`:f.verified?'<span class="tag ok">Proved by balance</span>':`<span class="tag bad" title="${esc((f.warns||[]).join(' '))}">Check</span><div class="small">${esc((f.warns||[])[0]||'')}</div>`}</td><td class="r"><button data-rm="${f.id}">Remove</button></td></tr>`).join('')}</table></div>`:'<div class="empty">No statements yet. Drop the PDFs above.</div>'}</div></div>
+  <div class="bd" style="padding:0">${B.files.length?`<div class="scroll nb"><table class="t"><tr><th>File</th><th>Client</th><th>Bank</th><th>Account</th><th>Period</th><th class="r">Lines</th><th class="r">Opening</th><th class="r">Closing</th><th>Proof</th><th></th></tr>${B.files.map(f=>`<tr><td class="fnm2"><div class="fn1" title="${esc(f.name)}">${esc(f.name.split('/').pop())}</div></td><td class="w"><input type="text" data-f="${f.id}" data-k="client" value="${esc(f.client)}" style="width:220px"></td><td class="w"><input type="text" data-f="${f.id}" data-k="bank" value="${esc(f.bank)}" style="width:110px"></td><td class="w"><input type="text" data-f="${f.id}" data-k="account" value="${esc(f.account)}" style="width:150px"></td><td class="n">${periodStr(f.from,f.to)}</td><td class="r">${f.n.toLocaleString()}</td><td class="r">${inr(f.opening)}</td><td class="r">${inr(f.closing)}</td><td class="st">${f.ocr&&f.sumOk?`<span class="tag ok" title="Opening, closing, total debits and total credits all equal the figures printed in the statement summary.">Scanned: agrees with printed summary</span><div class="small">${f.ocr} page(s) by OCR${f.fixedN?', '+f.fixedN+' corrected':''}</div>`:f.ocr?`<span class="tag ${f.verified&&(f.fixedN||0)<=0.08*f.n?'warn':'bad'}" title="${esc((f.warns||[]).join(' '))}">${f.verified?((f.fixedN||0)<=0.08*f.n?'Scanned: balances agree, check against the original':'Scanned: many lines corrected, check'):'Scanned: does not agree, check'}</span><div class="small">${f.ocr} page(s) by OCR${f.fixedN?', '+f.fixedN+' corrected':''}</div>`:f.verified?'<span class="tag ok">Proved by balance</span>':`<span class="tag bad" title="${esc((f.warns||[]).join(' '))}">Check</span><div class="small">${esc((f.warns||[])[0]||'')}</div>`}</td><td class="r"><button data-rm="${f.id}">Remove</button></td></tr>`).join('')}</table></div>`:'<div class="empty">No statements yet. Drop the PDFs above.</div>'}</div></div>
   ${r&&B.files.length?`<div class="msg slim">Read ${r.T.length.toLocaleString()} transactions from ${r.accts.length} account(s) of ${r.clients.length} client(s). Found ${r.IB.length} inter-bank transfer(s) and ${r.RV.length} reversal pair(s). Open Summary for the analysis.</div>`:''}
   <div class="row"><span class="sp"></span><button id="bsa-x" ${B.files.length?'':'disabled'}>Download Excel analysis</button><button class="primary" id="bsa-go" ${B.files.length?'':'disabled'}>Open the summary</button></div>`;
   wireDrop(); $('#bw').onchange=async e=>{ B.opts.window=+e.target.value; await save(); analyse(); draw(); }; $('#bx').onchange=async e=>{ B.opts.cross=e.target.checked; await save(); analyse(); draw(); };
@@ -3517,7 +3547,7 @@ function tSummary(el){ const r=B.res; if(!r||!B.files.length) return empty(el); 
   const tile=(n,l,t)=>`<div class="card kpi ${t||''}"><div class="n">${n}</div><div class="l">${l}</div></div>`;
   let h=`<div class="row" style="margin-top:0">${clientPicker()}<span class="sp"></span></div><div class="grid g4">${tile(inr(kp.cr),'Total credits')}${tile(inr(kp.adjCr),'Credits after removing inter-bank transfers and reversals','ok')}${tile(inr(kp.ibIn),'Inter-bank transfers in (matched)','warn')}${tile(inr(kp.rvIn+kp.rvOut),'Reversals (both sides)','warn')}${tile(inr(kp.cashIn),'Cash deposits')}${tile(kp.retN.toLocaleString(),'Cheque returns and bounces',kp.retN?'bad':'')}</div>`;
   for(const c of clients){ const cDup=c.accts.reduce((s,a)=>s+(a.dupes||0),0); h+=`<div class="card"><div class="hd"><h3>${esc(c.name)}</h3><span class="small">${dstr(c.from)} to ${dstr(c.to)} - ${c.accts.length} account(s) - ${c.f.n.toLocaleString()} transactions${cDup?` - <span class="tag bad">${cDup} duplicate line(s) left out</span>`:''}</span></div><div class="bd" style="padding:0"><div class="scroll nb"><table class="t"><tr><th>Account</th><th>Period</th><th class="r">Opening</th><th class="r">Credits</th><th class="r">Debits</th><th class="r">Closing</th><th class="r">Inter-bank in</th><th class="r">Inter-bank out</th><th class="r">Reversals</th><th class="r">Credits after adjustments</th><th class="r">Debits after adjustments</th><th class="r">Lowest balance</th><th class="r">Duplicates left out</th></tr>
-  ${c.accts.map(a=>`<tr><td><b>${esc(a.label)}</b><div class="small">${esc(a.account)}</div></td><td class="n">${dstr(a.from)} to ${dstr(a.to)}</td><td class="r">${inr(a.opening)}</td><td class="r">${inr(a.f.cr)}</td><td class="r">${inr(a.f.dr)}</td><td class="r">${inr(a.closing)}</td><td class="r">${inr(a.f.ibIn)}</td><td class="r">${inr(a.f.ibOut)}</td><td class="r">${inr(a.f.rvIn+a.f.rvOut)}</td><td class="r"><b>${inr(a.f.adjCr)}</b></td><td class="r"><b>${inr(a.f.adjDr)}</b></td><td class="r">${inr(a.f.min)}</td><td class="r">${a.dupes?`<span class="tag bad">${a.dupes}</span>`:'0'}</td></tr>`).join('')}
+  ${c.accts.map(a=>`<tr><td><b>${esc(a.label)}</b><div class="small">${esc(a.account)}</div></td><td class="n">${periodStr(a.from,a.to)}</td><td class="r">${inr(a.opening)}</td><td class="r">${inr(a.f.cr)}</td><td class="r">${inr(a.f.dr)}</td><td class="r">${inr(a.closing)}</td><td class="r">${inr(a.f.ibIn)}</td><td class="r">${inr(a.f.ibOut)}</td><td class="r">${inr(a.f.rvIn+a.f.rvOut)}</td><td class="r"><b>${inr(a.f.adjCr)}</b></td><td class="r"><b>${inr(a.f.adjDr)}</b></td><td class="r">${inr(a.f.min)}</td><td class="r">${a.dupes?`<span class="tag bad">${a.dupes}</span>`:'0'}</td></tr>`).join('')}
   ${c.accts.length>1?`<tr><td><b>All accounts</b></td><td></td><td class="r">${inr(c.opening)}</td><td class="r">${inr(c.f.cr)}</td><td class="r">${inr(c.f.dr)}</td><td class="r">${inr(c.closing)}</td><td class="r">${inr(c.f.ibIn)}</td><td class="r">${inr(c.f.ibOut)}</td><td class="r">${inr(c.f.rvIn+c.f.rvOut)}</td><td class="r"><b>${inr(c.f.adjCr)}</b></td><td class="r"><b>${inr(c.f.adjDr)}</b></td><td class="r"></td><td class="r">${cDup||''}</td></tr>`:''}</table></div></div></div>`; }
   // what the money is: categories, and the biggest parties
   const cat=new Map(); for(const x of T){ const k=x.gt==='IB'?'Inter-bank transfer':x.gt==='RV'?'Reversal':x.cat; if(!cat.has(k)) cat.set(k,{k,cn:0,cr:0,dn:0,dr:0}); const o=cat.get(k); if(x.dir==='C'){ o.cn++; o.cr+=x.amt; } else { o.dn++; o.dr+=x.amt; } }
@@ -3584,7 +3614,7 @@ async function exportXlsx(btn){ const r=B.res; if(!r) return; btn.disabled=true;
       const widths=[3,7,12,16,9,11,12,46,14,14,16,16,12,16,9,24,28,28,22,22,22,22]; widths.forEach((w,i)=>{ ws.getColumn(i+1).width=w; });
       ['K G Somani & Co LLP','Chartered Accountants, Mumbai','Lender\'s Financial Advisors','Bank Statement Analysis','For '+c.name].forEach((t,i)=>{ const cell=ws.getCell('B'+(2+i)); cell.value=t; cell.font={name:'Cambria',size:i<4?11:10,bold:i<4||i===4}; });
       ws.getCell('H2').value='Particular'; ws.getCell('I2').value='Amount (In Rs)'; ['H2','I2'].forEach(k=>Object.assign(ws.getCell(k),HDR));
-      accts.forEach((a,i)=>{ const hc=ws.getCell('H'+(3+i)); hc.value='Opening Balance - '+String(a.account||'').replace(/\D/g,'').slice(-4); hc.font=F; const vc=ws.getCell('I'+(3+i)); vc.value=a.opening||0; vc.numFmt=NF; vc.font=F; });
+      accts.forEach((a,i)=>{ const hc=ws.getCell('H'+(3+i)); const lastDigits=(a.label.match(/x(\d+)$/)||[])[1]||String(a.account||'').replace(/\D/g,'').slice(-4); hc.value='Opening Balance - '+lastDigits; hc.font=F; const vc=ws.getCell('I'+(3+i)); if(a.opening!=null){ vc.value=a.opening; vc.numFmt=NF; } else { vc.value='No activity'; } vc.font=F; });
       const hdr=Math.max(13,accts.length+6); const cols=['Sl No.','Bank Name','Bank Account No.','Account No.','Month','Txn Date','Description','Debit','Credit','Balance','Working 1','Variance','Working 2','DR/CR','Vendor name','Final Category','Sub - Category','KGS Remarks','Vendors Name','Final Category','Sub Category'];
       ws.getCell('S'+(hdr-1)).value='KGS Remarks'; ws.getCell('T'+(hdr-1)).value='Management Remarks, if any'; ['S','T'].forEach(k=>{ ws.getCell(k+(hdr-1)).font=FB; });
       cols.forEach((t,i)=>{ const cell=ws.getCell(hdr,2+i); cell.value=t; Object.assign(cell,HDR); }); ws.getRow(hdr).height=32;
