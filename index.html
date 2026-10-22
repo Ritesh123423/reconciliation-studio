@@ -284,6 +284,8 @@ table.nostick th{position:static}
 .card.kpi.warn::before{background:linear-gradient(90deg,var(--note),#eab04f);opacity:1}
 .card.kpi.bad::before{background:linear-gradient(90deg,var(--break),#ee7d69);opacity:1}
 .card.kpi:hover{transform:translateY(-3px);box-shadow:var(--sh2);border-color:var(--rule3)}
+button.card.kpi{appearance:none;-webkit-appearance:none;font:inherit;color:inherit;margin:0;display:block;line-height:normal;height:auto;box-shadow:var(--sh1)}
+button.card.kpi:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .kpi .n{display:block;font-family:var(--fd);font-size:clamp(18px,7.5cqi,34px);white-space:nowrap;font-weight:600;color:var(--ink);letter-spacing:-.02em;line-height:1.1}
 .kpi .l{display:block;margin-top:8px;font-size:13px;color:var(--ink3);line-height:1.4}
 .kpi.ok .n{color:var(--agree)} .kpi.warn .n{color:var(--note)} .kpi.bad .n{color:var(--break)}
@@ -3325,12 +3327,12 @@ const periodStr=(a,b)=>a==null&&b==null?'<span class="small">No activity</span>'
 const mkey=d=>{ const t=new Date(d*86400000); return t.getUTCFullYear()+'-'+String(t.getUTCMonth()+1).padStart(2,'0'); };
 const mlabel=k=>{ const [y,m]=k.split('-'); return MN[+m-1]+' '+y; };
 const cents=x=>Math.round(x*100);
-const B={ files:[], books:[], funds:[], rules:{}, opts:{window:0,cross:false,periodFrom:null,periodTo:null}, tab:'files', client:'ALL', q:'', cat:'All', dir:'All', page:0, loaded:false, res:null, busy:null };
+const B={ files:[], books:[], funds:[], rules:{}, fundFix:{}, opts:{window:0,cross:false,periodFrom:null,periodTo:null}, tab:'files', client:'ALL', q:'', cat:'All', dir:'All', page:0, loaded:false, res:null, busy:null };
 window.BSA={state:B};
 
 /* ---------- storage ---------- */
-async function load(){ if(B.loaded) return; B.loaded=true; try{ const r=await A.DB.get('kv','bsa'); if(r&&r.v){ B.opts=Object.assign(B.opts,r.v.opts||{}); B.rules=r.v.rules||{}; for(const m of r.v.funds||[]){ const t=await A.DB.get('kv','bsaf:'+m.id); if(t&&t.v){ m.rows=t.v; B.funds.push(m); } } for(const m of r.v.books||[]){ const t=await A.DB.get('kv','bsab:'+m.id); if(t&&t.v){ m.rows=t.v; B.books.push(m); } } for(const m of r.v.files||[]){ const t=await A.DB.get('kv','bsa:'+m.id); if(t&&t.v){ m.txns=t.v; B.files.push(m); } } } }catch(e){ console.warn(e); } analyse(); }
-async function save(){ try{ await A.DB.put('kv',{k:'bsa',v:{opts:B.opts,rules:B.rules,funds:B.funds.map(f=>{ const m=Object.assign({},f); delete m.rows; return m; }),books:B.books.map(b=>{ const m=Object.assign({},b); delete m.rows; delete m._e; delete m._k; return m; }),files:B.files.map(f=>{ const m=Object.assign({},f); delete m.txns; return m; })}}); }catch(e){ console.warn(e); } }
+async function load(){ if(B.loaded) return; B.loaded=true; try{ const r=await A.DB.get('kv','bsa'); if(r&&r.v){ B.opts=Object.assign(B.opts,r.v.opts||{}); B.rules=r.v.rules||{}; B.fundFix=r.v.fundFix||{}; for(const m of r.v.funds||[]){ const t=await A.DB.get('kv','bsaf:'+m.id); if(t&&t.v){ m.rows=t.v; B.funds.push(m); } } for(const m of r.v.books||[]){ const t=await A.DB.get('kv','bsab:'+m.id); if(t&&t.v){ m.rows=t.v; B.books.push(m); } } for(const m of r.v.files||[]){ const t=await A.DB.get('kv','bsa:'+m.id); if(t&&t.v){ m.txns=t.v; B.files.push(m); } } } }catch(e){ console.warn(e); } analyse(); }
+async function save(){ try{ await A.DB.put('kv',{k:'bsa',v:{opts:B.opts,rules:B.rules,fundFix:B.fundFix,funds:B.funds.map(f=>{ const m=Object.assign({},f); delete m.rows; return m; }),books:B.books.map(b=>{ const m=Object.assign({},b); delete m.rows; delete m._e; delete m._k; return m; }),files:B.files.map(f=>{ const m=Object.assign({},f); delete m.txns; return m; })}}); }catch(e){ console.warn(e); } }
 async function saveTxns(f){ await A.DB.put('kv',{k:'bsa:'+f.id,v:f.txns}); }
 
 /* ---------- pdf.js, loaded the first time a PDF is opened ---------- */
@@ -4027,6 +4029,10 @@ function vmScore(a,b){ const A=vmWords(a), B=vmWords(b); if(!A.length||!B.length
   if(ja2.length>=8&&jb2.length>=8&&(jb2.includes(ja2)||ja2.includes(jb2))) sc=Math.max(sc,0.85);
   return Math.min(0.94,sc); }
 const titleCase=s=>String(s==null?'':s).toLowerCase().replace(/(^|[\s(\-\/.,&])([a-z])/g,(m,p,c)=>p+c.toUpperCase());
+// a stable key for a line's own manual fund-utilisation fix, independent of the id the line happens to get this
+// particular render (ids are rebuilt fresh every analyse() and are not safe to save against) - the line's own date,
+// amount, direction and the start of its narration do not change between renders of the same uploaded file
+const fundFixKey=o=>[o.date,Math.round((o.amt||0)*100),o.dir,String(o.narr||'').slice(0,60)].join('|');
 function mapFunds(T,bulks){ const funds=[]; for(const f of B.funds) for(const r of f.rows) funds.push(r); const stats={rows:funds.length,used:0,unmatched:0}; if(!funds.length) return stats; const cents=v=>Math.round(v*100); const WIN=Math.max(0,B.opts.fwin==null?15:+B.opts.fwin);
   const md=d=>{ const t=new Date(d*86400000); return [t.getUTCFullYear(),t.getUTCMonth()+1,t.getUTCDate()]; }; const typo=(a,b)=>{ if(a==null||b==null) return false; const [y1,m1,d1]=md(a),[y2,m2,d2]=md(b); return (m1===m2&&d1===d2&&y1!==y2)||(m1===d2&&d1===m2&&m1!==d1); };
   const pool=new Map(); funds.forEach((r,i)=>{ r.id=i; r.used=false; const k=cents(r.amt)+'|'+r.dir; if(!pool.has(k)) pool.set(k,[]); pool.get(k).push(r); });
@@ -4138,7 +4144,11 @@ function analyse(){ harmonizeClients();
     FST=mapFunds(T,BULKS);
     for(const x of T){ if(x.vend2&&!x.gt&&!x.bulk&&!x.lv&&!(x.bk&&x.bk.p)&&!(x.mainEntry&&x.mainEntry.p)) x.vend=x.vend2; }
     for(const x of T){ if(!x.ca){ const sc=softCat(x.vend,x.fc,x.mainAmt||x.amt); x.ca=sc||(x.fc==='Unclassified'?'':x.fc); } }
-    for(const bg of BULKS) for(const c of bg.children){ if(!c.ca){ c.ca=softCat(c.vend,'',c.amt)||''; } } }
+    for(const bg of BULKS) for(const c of bg.children){ if(!c.ca){ c.ca=softCat(c.vend,'',c.amt)||''; } }
+    // a line you fixed by hand in the Fund utilisation popup wins over whatever the automatic match found or
+    // missed, every time this re-runs (a new upload, a period change, anything) - until you clear or replace it
+    for(const x of T){ const fx=B.fundFix[fundFixKey(x)]; if(fx){ x.vend=fx.vend; x.ca=fx.ca; x.cst='Fixed'; x.crm=fx.note||'Set by you.'; } }
+    for(const bg of BULKS) for(const c of bg.children){ const fx=B.fundFix[fundFixKey(c)]; if(fx){ c.vend=fx.vend; c.ca=fx.ca; c.cst='Fixed'; c.crm=fx.note||'Set by you.'; } } }
   // per account and client figures
   const out={accts:[...accts.values()],clients:CL,T,IB,RV};
   for(const a of out.accts){ const t=a.txns; a.from=t.length?t[0].date:null; a.to=t.length?t[t.length-1].date:null;
@@ -4307,19 +4317,47 @@ function tRV(el){ const r=B.res; if(!r||!B.files.length) return empty(el); const
   el.innerHTML=`<div class="row" style="margin-top:0">${clientPicker()}<span class="sp"></span></div><details class="how"><summary>How these were found</summary><div> Inside one account, a credit and a debit of exactly the same amount within 15 days that cancel each other are a reversal pair, for example a cheque deposit and its return or a payment and its refund. The narration must say so (return, reversal, refund, unpaid, rejected and similar) or the two lines must carry the same reference. Each pair is numbered RV-1, RV-2 ... and both lines are left out of the adjusted credits and debits.</div></details>
   <div class="card"><div class="hd"><h3>Reversal pairs</h3><span class="small">${pl(L.length,'pair')}, Rs ${inr(tot)}</span></div><div class="bd" style="padding:0">${L.length?`<div class="scroll nb"><table class="t"><tr><th>No.</th><th>Account</th><th class="r">Amount</th><th>First line</th><th>Reversed on</th><th>What it looks like</th></tr>${L.map(p=>`<tr><td><span class="gtag">${p.id}</span></td><td>${esc(p.a.label)}<div class="small">${esc(p.a.client)}</div></td><td class="r">${inr(p.a.amt)}</td><td class="w">${dstr(p.a.date)} ${p.a.dir==='C'?'credit':'debit'}<div class="clamp small">${esc(p.a.narr)}</div></td><td class="w">${dstr(p.b.date)} ${p.b.dir==='C'?'credit':'debit'}${p.days?' ('+p.days+' day'+(p.days>1?'s':'')+' later)':' (same day)'}<div class="clamp small">${esc(p.b.narr)}</div></td><td class="w">${esc(p.kind)}</td></tr>`).join('')}</table></div>`:'<div class="empty">No reversal pairs found.</div>'}</div></div>`; wirePicker(); }
 
+const FUND_STATUSES=['Ok','Date differs','Check name','Check amount','Fixed','Not in the sheet'];
+function openFundFix(item){
+  const dlg=document.getElementById('dlg'); if(!dlg) return;
+  const cur=B.fundFix[item.key];
+  document.getElementById('dlgt').textContent='Fix this line';
+  const cats=[...new Set(B.funds.flatMap(f=>f.rows.map(x=>x.cat)).filter(Boolean))].sort();
+  dlg.querySelector('.bd').innerHTML=`
+    <div class="small" style="margin-bottom:10px">${dstr(item.d)} &middot; ${esc(item.acct)} &middot; ${item.dir==='D'?'Paid':'Received'} ${inr(item.amt)}</div>
+    <div class="msg slim" style="margin-bottom:14px"><b>Full line, as read from the statement:</b><br>${esc(item.desc)}</div>
+    ${item.rm?`<div class="msg warn slim" style="margin-bottom:14px">${esc(item.rm)}</div>`:''}
+    <div class="row"><label class="f" style="flex:1 1 260px"><span>Vendor name</span><input type="text" id="ffVend" value="${esc(item.vend||'')}"></label></div>
+    <div class="row"><label class="f" style="flex:1 1 260px"><span>Category</span><input type="text" id="ffCat" value="${esc(item.ca||'')}" list="ffCatList" placeholder="Type or pick one of the sheet's own categories"></label></div>
+    <datalist id="ffCatList">${cats.map(c=>`<option value="${esc(c)}">`).join('')}</datalist>
+    <div class="row" style="justify-content:flex-end;margin-top:16px">${cur?'<button id="ffClear" class="danger">Undo my fix</button><span class="sp"></span>':''}<button id="ffCancel">Cancel</button><button id="ffSave" class="primary">Save</button></div>`;
+  document.getElementById('ffSave').onclick=()=>{
+    const vend=document.getElementById('ffVend').value.trim(), cat=document.getElementById('ffCat').value.trim();
+    if(!vend||!cat) return;
+    B.fundFix[item.key]={vend,ca:cat}; save(); analyse(); draw(); dlg.close(); };
+  document.getElementById('ffCancel').onclick=()=>dlg.close();
+  const clr=document.getElementById('ffClear'); if(clr) clr.onclick=()=>{ delete B.fundFix[item.key]; save(); analyse(); draw(); dlg.close(); };
+  if(!dlg.open) dlg.showModal();
+}
 function tFund(el){ const r=B.res; if(!r||!B.funds.length) return empty(el);
-  const items=[]; for(const x of r.T){ if(x.gt||x.bulk) continue; items.push({d:x.date,acct:x.label,desc:x.narr,vend:x.vend,amt:x.amt,dir:x.dir,ca:x.ca||'',st:x.cst||'',rm:x.crm||'',kind:'Statement line'}); }
-  for(const bg of r.bulks) for(const c of bg.children) items.push({d:c.date,acct:c.label,desc:'Part of a bulk payment',vend:c.vend,amt:c.amt,dir:c.dir,ca:c.ca||'',st:c.cst||'',rm:c.crm||'',kind:'Bulk part'});
+  const items=[]; for(const x of r.T){ if(x.gt||x.bulk) continue; items.push({key:fundFixKey(x),d:x.date,acct:x.label,desc:x.narr,vend:x.vend,amt:x.amt,dir:x.dir,ca:x.ca||'',st:x.cst||'',rm:x.crm||'',kind:'Statement line'}); }
+  for(const bg of r.bulks) for(const c of bg.children) items.push({key:fundFixKey(c),d:c.date,acct:c.label,desc:'Part of a bulk payment',vend:c.vend,amt:c.amt,dir:c.dir,ca:c.ca||'',st:c.cst||'',rm:c.crm||'',kind:'Bulk part'});
   const cnt={}; for(const i of items){ const k=i.st||'Not in the sheet'; cnt[k]=(cnt[k]||0)+1; }
+  // a filter picked from a stat tile, or from the Show dropdown, scopes the one long table down to just that -
+  // the whole point being that nobody should have to scroll past hundreds of already-fine lines to find the ones
+  // that still need a look
   const fst=B.fst||'All', q=(B.fq||'').toLowerCase(); let L=items.filter(i=>(fst==='All'||(i.st||'Not in the sheet')===fst)&&(!q||(i.vend+' '+i.desc+' '+i.ca+' '+i.amt).toLowerCase().includes(q))); L.sort((a,b)=>a.d-b.d); const pages=Math.max(1,Math.ceil(L.length/100)); if(B.page>=pages) B.page=0; const sl=L.slice(B.page*100,B.page*100+100);
   const lo=Math.min(...r.T.map(x=>x.date)), hi=Math.max(...r.T.map(x=>x.date)); const rows=[]; for(const f of B.funds) for(const x of f.rows) if(!x.used&&x.date!=null&&x.date>=lo-3&&x.date<=hi+3) rows.push(x); rows.sort((a,b)=>a.date-b.date);
-  const tile=(n,l,t)=>`<div class="card kpi ${t||''}"><div class="n">${n.toLocaleString()}</div><div class="l">${l}</div></div>`;
-  el.innerHTML=`<div class="msg slim">The vendor, amount and date of every line are checked against the client's fund utilisation sheet (${B.funds.map(f=>esc(f.name.split('/').pop())+': '+f.nPay.toLocaleString()+' payments, '+f.nRec.toLocaleString()+' receipts').join('; ')}). The category comes from the sheet. Only entries within ${B.opts.fwin==null?15:+B.opts.fwin} days of the bank date are used; a typing error in the sheet's date is allowed and noted.</div>
-  <div class="grid g4" style="margin-bottom:18px;grid-template-columns:repeat(auto-fit,minmax(190px,1fr))">${tile(cnt['Ok']||0,'Name, amount and date agree','ok')}${tile(cnt['Date differs']||0,'Name and amount agree, date differs','warn')}${tile((cnt['Check name']||0)+(cnt['Check amount']||0),'Only the name or only the amount agrees','warn')}${tile(cnt['Not in the sheet']||0,'Not found in the sheet')}</div>
-  <div class="card"><div class="hd tb"><h3>Lines against the fund utilisation sheet</h3><span class="sp"></span><label class="f inline">Show <select id="fsel">${['All','Ok','Date differs','Check name','Check amount','Not in the sheet'].map(k=>`<option ${fst===k?'selected':''}>${k}</option>`).join('')}</select></label><label class="f inline"><input type="text" id="fq" value="${esc(B.fq||'')}" placeholder="Search vendor, amount, category" style="width:220px"></label></div>
-  <div class="bd"><div class="pager"><button id="fpp" ${B.page?'':'disabled'}>Previous</button><span>Page ${B.page+1} of ${pages} (${L.length.toLocaleString()} lines)</span><button id="fpn" ${B.page<pages-1?'':'disabled'}>Next</button></div><div class="scroll"><table class="t"><tr><th>Date</th><th>Account</th><th>Vendor</th><th>Description</th><th class="r">Debit</th><th class="r">Credit</th><th>Category as per the CA</th><th>Status</th><th>Remarks</th></tr>${sl.map(i=>`<tr><td class="n">${dstr(i.d)}</td><td class="n">${esc(i.acct)}</td><td class="w"><b>${esc(i.vend)}</b></td><td class="w"><div class="clamp">${esc(i.desc)}</div></td><td class="r">${i.dir==='D'?inr(i.amt):''}</td><td class="r">${i.dir==='C'?inr(i.amt):''}</td><td class="w">${esc(i.ca)}</td><td class="n"><span class="tag ${i.st==='Ok'?'ok':i.st?'warn':''}">${esc(i.st||'Not in the sheet')}</span></td><td class="w"><div class="clamp small">${esc(i.rm)}</div></td></tr>`).join('')}</table></div></div></div>
+  const tile=(n,l,t,k)=>`<button type="button" class="card kpi ${t||''}" data-fst="${esc(k)}" style="text-align:left;cursor:pointer;width:100%"><div class="n">${n.toLocaleString()}</div><div class="l">${l}</div></button>`;
+  const fixedN=cnt['Fixed']||0;
+  el.innerHTML=`<div class="msg slim">The vendor, amount and date of every line are checked against the client's fund utilisation sheet (${B.funds.map(f=>esc(f.name.split('/').pop())+': '+f.nPay.toLocaleString()+' payments, '+f.nRec.toLocaleString()+' receipts').join('; ')}). The category comes from the sheet. Only entries within ${B.opts.fwin==null?15:+B.opts.fwin} days of the bank date are used; a typing error in the sheet's date is allowed and noted. <b>Click a tile, or a line's Fix button, to see why and put it right.</b></div>
+  <div class="grid g4" style="margin-bottom:18px;grid-template-columns:repeat(auto-fit,minmax(190px,1fr))">${tile(cnt['Ok']||0,'Name, amount and date agree','ok','Ok')}${tile(cnt['Date differs']||0,'Name and amount agree, date differs','warn','Date differs')}${tile((cnt['Check name']||0)+(cnt['Check amount']||0),'Only the name or only the amount agrees','warn','Check name')}${tile(cnt['Not in the sheet']||0,'Not found in the sheet','','Not in the sheet')}${fixedN?tile(fixedN,'Fixed by you','ok','Fixed'):''}</div>
+  <div class="card"><div class="hd tb"><h3>Lines against the fund utilisation sheet</h3><span class="sp"></span><label class="f inline">Show <select id="fsel">${['All',...FUND_STATUSES].map(k=>`<option ${fst===k?'selected':''}>${k}</option>`).join('')}</select></label><label class="f inline"><input type="text" id="fq" value="${esc(B.fq||'')}" placeholder="Search vendor, amount, category" style="width:220px"></label></div>
+  <div class="bd"><div class="pager"><button id="fpp" ${B.page?'':'disabled'}>Previous</button><span>Page ${B.page+1} of ${pages} (${L.length.toLocaleString()} lines)</span><button id="fpn" ${B.page<pages-1?'':'disabled'}>Next</button></div><div class="scroll"><table class="t"><tr><th>Date</th><th>Account</th><th>Vendor</th><th>Description</th><th class="r">Debit</th><th class="r">Credit</th><th>Category as per the CA</th><th>Status</th><th>Remarks</th><th></th></tr>${sl.map((i,k)=>`<tr><td class="n">${dstr(i.d)}</td><td class="n">${esc(i.acct)}</td><td class="w"><b>${esc(i.vend)}</b></td><td class="w"><div class="clamp">${esc(i.desc)}</div></td><td class="r">${i.dir==='D'?inr(i.amt):''}</td><td class="r">${i.dir==='C'?inr(i.amt):''}</td><td class="w">${esc(i.ca)}</td><td class="n"><span class="tag ${i.st==='Ok'||i.st==='Fixed'?'ok':i.st?'warn':''}">${esc(i.st||'Not in the sheet')}</span></td><td class="w"><div class="clamp small">${esc(i.rm)}</div></td><td class="r"><button data-ff="${k}" title="See why, and fix it">Fix</button></td></tr>`).join('')}</table></div></div></div>
   <div class="card"><div class="hd"><h3>In the fund utilisation sheet, not found in the bank data</h3><span class="small">${pl(rows.length,'entry','entries')} dated within the period of the statements</span></div><div class="bd" style="padding:0">${rows.length?`<div class="scroll nb"><table class="t"><tr><th>Date</th><th>Party</th><th class="r">Payment</th><th class="r">Receipt</th><th>Category</th><th>Note</th></tr>${rows.slice(0,300).map(x=>`<tr><td class="n">${dstr(x.date)}</td><td class="w">${esc(x.party)}</td><td class="r">${x.dir==='D'?inr(x.amt):''}</td><td class="r">${x.dir==='C'?inr(x.amt):''}</td><td class="w">${esc(x.cat)}</td><td class="w"><div class="clamp small">${esc(x.note)}</div></td></tr>`).join('')}</table></div>${rows.length>300?'<div class="small" style="padding:8px 22px">The first 300 are shown.</div>':''}`:'<div class="empty">Every entry of the sheet in this period was found.</div>'}</div></div>`;
-  $('#fsel').onchange=e=>{ B.fst=e.target.value; B.page=0; draw(); }; let t; $('#fq').oninput=e=>{ clearTimeout(t); t=setTimeout(()=>{ B.fq=e.target.value; B.page=0; draw(); const i=$('#fq'); i.focus(); i.setSelectionRange(i.value.length,i.value.length); },350); }; $('#fpp').onclick=()=>{ B.page--; draw(); }; $('#fpn').onclick=()=>{ B.page++; draw(); }; }
+  $('#fsel').onchange=e=>{ B.fst=e.target.value; B.page=0; draw(); }; let t; $('#fq').oninput=e=>{ clearTimeout(t); t=setTimeout(()=>{ B.fq=e.target.value; B.page=0; draw(); const i=$('#fq'); i.focus(); i.setSelectionRange(i.value.length,i.value.length); },350); }; $('#fpp').onclick=()=>{ B.page--; draw(); }; $('#fpn').onclick=()=>{ B.page++; draw(); };
+  $$('[data-fst]').forEach(b=>b.onclick=()=>{ B.fst=b.dataset.fst; B.page=0; draw(); });
+  $$('[data-ff]').forEach(b=>b.onclick=()=>openFundFix(sl[+b.dataset.ff])); }
 function tTxn(el){ const r=B.res; if(!r||!B.files.length) return empty(el); let T=scope().T; const cats=['All',...new Set(T.map(x=>x.cat)),'Inter-bank transfer','Reversal'];
   const q=B.q.trim().toLowerCase(); T=T.filter(x=>(B.cat==='All'||(B.cat==='Inter-bank transfer'?x.gt==='IB':B.cat==='Reversal'?x.gt==='RV':x.cat===B.cat))&&(B.dir==='All'||x.dir===B.dir)&&(!q||(x.narr+' '+x.party+' '+x.amt+' '+(x.grp||'')+' '+x.label).toLowerCase().includes(q))); const pages=Math.max(1,Math.ceil(T.length/100)); if(B.page>=pages) B.page=0; const sl=T.slice(B.page*100,B.page*100+100); const hasBk=T.some(x=>x.bkc);
   el.innerHTML=`<div class="card"><div class="hd tb"><h3>Transactions</h3><span class="sp"></span>${clientPicker()}<label class="f inline">Type <select id="bc">${[...new Set(cats)].map(c=>`<option ${B.cat===c?'selected':''}>${esc(c)}</option>`).join('')}</select></label><label class="f inline">Direction <select id="bd"><option ${B.dir==='All'?'selected':''}>All</option><option value="C" ${B.dir==='C'?'selected':''}>Credits</option><option value="D" ${B.dir==='D'?'selected':''}>Debits</option></select></label><label class="f inline"><input type="text" id="bq" value="${esc(B.q)}" placeholder="Search narration, party, IB-1" style="width:200px"></label></div>
