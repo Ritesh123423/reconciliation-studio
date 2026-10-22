@@ -3327,7 +3327,7 @@ const periodStr=(a,b)=>a==null&&b==null?'<span class="small">No activity</span>'
 const mkey=d=>{ const t=new Date(d*86400000); return t.getUTCFullYear()+'-'+String(t.getUTCMonth()+1).padStart(2,'0'); };
 const mlabel=k=>{ const [y,m]=k.split('-'); return MN[+m-1]+' '+y; };
 const cents=x=>Math.round(x*100);
-const B={ files:[], books:[], funds:[], rules:{}, fundFix:{}, opts:{window:0,cross:false,periodFrom:null,periodTo:null}, tab:'files', client:'ALL', q:'', cat:'All', dir:'All', page:0, loaded:false, res:null, busy:null };
+const B={ files:[], books:[], funds:[], rules:{}, fundFix:{}, bkSel:null, opts:{window:0,cross:false,periodFrom:null,periodTo:null}, tab:'files', client:'ALL', q:'', cat:'All', dir:'All', page:0, loaded:false, res:null, busy:null };
 window.BSA={state:B};
 
 /* ---------- storage ---------- */
@@ -3973,8 +3973,16 @@ function tBooks(el){ const r=B.res; const accts=r?r.accts:[];
   const res=(B.res&&B.res.books)||[]; const notReady=B.books.some(b=>!bookReady(b));
   el.innerHTML=`<details class="how"><summary>How the reconciliation works</summary><div>Each bank account in a book is linked to one statement account. Over the dates both cover, every statement line is matched to a book entry of the same amount and direction: first by the same UTR or cheque number, then by date within the allowed days. A voucher that covers several statement lines, or a day's lines that together equal one book entry, are matched as a group. Anything left on either side is listed, and the balance reconciliation proves whether the difference is fully explained. The book party also becomes the vendor name for classification, and the matched entry is shown in the Transactions tab and the Excel download.</div></details>
   ${res.length?bkSummaryCard(res):`<div class="msg slim">${notReady?'Finish the setup of the bank book below (account and columns) to see the reconciliation.':'No account is linked yet.'}</div>`}
-  <div class="row" style="margin:0 0 14px"><label class="f inline">Match dates up to <select id="bkw">${[0,1,2,3,5,7,10,15,30].map(n=>`<option value="${n}" ${(B.opts.bwin==null?5:+B.opts.bwin)===n?'selected':''}>${n} day${n===1?'':'s'} apart</option>`).join('')}</select></label><span class="sp"></span></div>`+res.map(bkResultCard).join('')+`<details class="how bksetup" ${notReady||!res.length?'open':''}><summary>Bank book setup: file, columns and account link</summary><div style="padding:0 0 6px;max-width:none">${cards}</div></details>`;
-  $$('[data-recgo]').forEach(b=>b.onclick=()=>{ const c=document.querySelector('[data-rec="'+CSS.escape(res[+b.dataset.recgo].label)+'"]'); if(c) c.scrollIntoView({behavior:'smooth',block:'start'}); });
+  <div class="row" style="margin:0 0 14px"><label class="f inline">Match dates up to <select id="bkw">${[0,1,2,3,5,7,10,15,30].map(n=>`<option value="${n}" ${(B.opts.bwin==null?5:+B.opts.bwin)===n?'selected':''}>${n} day${n===1?'':'s'} apart</option>`).join('')}</select></label><span class="sp"></span></div>`+
+  // only the one account picked from the list above is shown in full - clicking View there is the only way in, and
+  // a plain "back to the list" is the only way out, so tallying one account at a time never means scrolling past
+  // every other account's own matched/unmatched lines to get to or away from it
+  (()=>{ const sel=B.bkSel&&res.find(o=>o.label===B.bkSel);
+    if(sel) return `<div class="row" style="margin:0 0 10px"><button id="bkBack">&larr; All accounts</button></div>`+bkResultCard(sel);
+    return res.length?`<div class="empty">Click <b>View</b> on an account above to see its reconciliation in detail.</div>`:''; })()
+  +`<details class="how bksetup" ${notReady||!res.length?'open':''}><summary>Bank book setup: file, columns and account link</summary><div style="padding:0 0 6px;max-width:none">${cards}</div></details>`;
+  $$('[data-recgo]').forEach(b=>b.onclick=()=>{ B.bkSel=res[+b.dataset.recgo].label; draw(); });
+  const bkBack=document.getElementById('bkBack'); if(bkBack) bkBack.onclick=()=>{ B.bkSel=null; draw(); };
   $('#bkw').onchange=async e=>{ B.opts.bwin=+e.target.value; await save(); analyse(); draw(); };
   const upd=async(b,fn)=>{ fn(b); await saveBook(b); analyse(); draw(); };
   $$('[data-bf]').forEach(i=>i.onchange=()=>{ const b=B.books.find(x=>x.id===i.dataset.bk); if(!b) return; const f=i.dataset.bf; upd(b,b=>{ if(f==='inDr') b.inDr=i.value==='1'; else if(f==='sheet'){ b.sheet=i.value; const d=detectBookSheet(b.rows[b.sheet]||[]); b.hdr=d?d.hdr:0; b.map=d?d.map:{}; b.links={}; } else if(f==='hdr'){ b.hdr=Math.max(0,(+i.value||1)-1); const d=detectBookSheet((b.rows[b.sheet]||[]).slice(b.hdr)); b.map=d&&d.hdr===0?d.map:{}; b.links={}; } else { b.map[f]=i.value===''?undefined:+i.value; if(f==='ba') b.links={}; } }); });
