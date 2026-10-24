@@ -436,6 +436,7 @@ dialog .ft{padding:15px 24px;border-top:1px solid var(--rule2);display:flex;gap:
 .lchip{display:inline-flex;align-items:center;gap:11px;border:1px solid var(--rule);background:var(--page);
   border-radius:11px;padding:9px 16px 9px 10px;cursor:pointer;height:auto;text-align:left}
 .lchip:hover:not(:disabled){border-color:var(--accent-line);background:var(--accent-sunk)}
+.lchip.on{background:#fff;border-color:var(--accent);box-shadow:0 0 0 1px var(--accent),var(--sh2)}
 .lchip .n{width:26px;height:26px;border-radius:8px;background:var(--navy);color:#fff;display:grid;place-items:center;
   font-family:var(--fd);font-size:12.5px;font-weight:600;flex:0 0 26px;font-variant-numeric:tabular-nums}
 .lchip.need .n{background:var(--break)}
@@ -848,6 +849,41 @@ body{font-size:13.5px}
 .kpi .n{font-size:26px;letter-spacing:-.015em}
 .kpi .l{margin-top:4px;font-size:12.5px}
 .top{height:52px}
+/* top bar: navy like the menu, with clear coloured controls */
+.top{height:56px;background:var(--side1);border-bottom:0;box-shadow:0 1px 0 rgba(255,255,255,.06) inset,0 2px 10px rgba(12,24,64,.18);-webkit-backdrop-filter:none;backdrop-filter:none}
+.top .ttl b{color:#fff}
+.top .ttl span{color:#b9c6ee}
+.top .sbt{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.28);color:#fff;box-shadow:none}
+.top .sbt:hover{background:rgba(255,255,255,.22);border-color:rgba(255,255,255,.5);color:#fff}
+.top .pill{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.3);color:#fff;font-weight:600}
+.top .pill::before{background:#ffb347;box-shadow:0 0 0 3px rgba(255,179,71,.25)}
+.top .pill.ok{background:rgba(52,211,153,.16);border-color:rgba(52,211,153,.55)}
+.top .pill.ok::before{background:#34d399;box-shadow:0 0 0 3px rgba(52,211,153,.28)}
+.top label{color:#dbe4ff;font-size:12.5px;font-weight:600;display:inline-flex;align-items:center;gap:8px}
+.top select{background:#fff;color:#0c1840;border:1px solid rgba(255,255,255,.55);border-radius:9px;font-weight:600;padding:0 10px}
+.top select:focus{outline:2px solid #ffb347;outline-offset:1px}
+.top button{height:34px;border-radius:9px;font-weight:600;white-space:nowrap;transition:background .15s,border-color .15s,transform .15s}
+.top button:active{transform:scale(.97)}
+.top #newp{background:var(--accent);border:1px solid var(--accent-hi);color:#fff;box-shadow:0 2px 8px rgba(234,88,12,.4)}
+.top #newp:hover{background:var(--accent-hi)}
+.top #renp{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.4);color:#fff}
+.top #renp:hover{background:rgba(255,255,255,.24)}
+.top #ddb{background:rgba(255,255,255,.1);border:1px solid #ff9d8f;color:#ffd5cf}
+.top #ddb:hover{background:#c0301c;border-color:#c0301c;color:#fff}
+.top .ham{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.35);color:#fff}
+/* the Clear data menu: its items are not top-bar buttons */
+.top .ddm{min-width:290px;padding:8px;border-radius:14px;border:1px solid var(--rule3);box-shadow:0 14px 36px rgba(12,24,64,.22);background:#fff}
+.top .ddm button{height:auto;white-space:normal;display:block;width:100%;text-align:left;background:none;border:1px solid transparent;border-radius:9px;padding:9px 12px;color:var(--ink);font-weight:500;box-shadow:none}
+.top .ddm button+button{margin-top:2px}
+.top .ddm button b{display:block;color:var(--navy);font-weight:600;font-size:13.5px;line-height:1.35}
+.top .ddm button span{display:block;color:var(--ink3);font-weight:400;font-size:12px;line-height:1.4;margin-top:1px}
+.top .ddm button:hover:not(:disabled){background:#eaf0ff;border-color:#c9d6f7}
+.top .ddm button.dg{margin-top:8px;padding-top:11px;border-top:1px solid var(--rule);border-radius:0 0 9px 9px}
+.top .ddm button.dg:first-of-type{margin-top:8px}
+.top .ddm button.dg b{color:var(--break)}
+.top .ddm button.dg:hover:not(:disabled){background:var(--break-sunk);border-color:var(--break-line)}
+.top .ddm button.dg:hover:not(:disabled) span{color:var(--break)}
+.top .ddm button.dg+button.dg{margin-top:2px;border-top:0;padding-top:9px;border-radius:9px}
 .next{padding:14px 18px;margin-bottom:14px}
 .next b{font-size:16px}
 .card.steps4 .stp4{padding:14px 18px}
@@ -1212,7 +1248,7 @@ function plan(F){
   for(let i=0;i<kept.length-1;i++){ const a=kept[i],b=kept[i+1];
     const chain=(a.closing!=null&&b.opening!=null)?(a.closing===b.opening):null;
     links.push({a:a.name,b:b.name,chain,closing:a.closing,opening:b.opening});
-    if(a.to!=null&&b.from!=null){ if(b.from>a.to+1) gaps.push([a.to+1,b.from-1]); if(b.from<=a.to) overlaps.push([b.from,Math.min(a.to,b.to)]); }
+    if(a.to!=null&&b.from!=null){ if(b.from>a.to+1) gaps.push([a.to+1,b.from-1,chain===true,(a.closing!=null&&b.opening!=null)?b.opening-a.closing:null]); if(b.from<=a.to) overlaps.push([b.from,Math.min(a.to,b.to)]); }
   }
   return {kept,links,gaps,overlaps,from:kept.length?kept[0].from:null,to:kept.length?kept[kept.length-1].to:null};
 }
@@ -1297,12 +1333,13 @@ function bankName(n){
   }catch(e){ return null; }
   return null;
 }
+function vtypeOf(v){ const t=String(v==null?'':v).toUpperCase().split(/[^A-Z]+/).filter(Boolean); const M={PV:'Payment voucher',PMT:'Payment voucher',PAY:'Payment voucher',PYMT:'Payment voucher',BP:'Payment voucher',BPV:'Payment voucher',BPMT:'Payment voucher',CP:'Payment voucher',RV:'Receipt voucher',REC:'Receipt voucher',RCT:'Receipt voucher',RCPT:'Receipt voucher',BR:'Receipt voucher',BRV:'Receipt voucher',BRCT:'Receipt voucher',JV:'Journal voucher',JNL:'Journal voucher',JOU:'Journal voucher',GJ:'Journal voucher',JOURNAL:'Journal voucher',CV:'Contra voucher',CTR:'Contra voucher',CTRA:'Contra voucher',CONTRA:'Contra voucher',DN:'Debit note',CN:'Credit note',REV:'Reversal entry'}; for(const x of t) if(M[x]) return M[x]; return ''; }
 function cleanBook(s){ s=String(s==null?'':s).replace(/\(TR\)|\( TR\)|\(MSME\)|-EXP|-MSME|\[.*?\]/gi,''); s=s.trim().replace(/^M\/S\.?/i,''); return s.replace(/\s+/g,' ').replace(/^[ .-]+|[ .-]+$/g,''); }
 const RETKW=/CHQ DEP RET(?!\s*CHGS)|CHQ RET(?!URN CHGS)|I\/W CHQ RET|CHEQUE DEPOSIT REVERSAL|CHQ DEP - REV|NEFT RETURN|^REJECT:|\bREVERSAL\b/i;
 
 /* ---------- main ---------- */
 function run(bankIn,booksIn,master,S,progress){
-  S=Object.assign({dateWin:3,tol:0.02,mismatchLimit:100,vendorRe:'^P\\d+$',customerRe:'^\\d{5,6}$',suspense:'SUS,000000',noMaster:false},S||{});
+  S=Object.assign({farMatch:true,revWin:365,bulkWin:30,dateWin:3,tol:0.02,mismatchLimit:100,vendorRe:'^P\\d+$',customerRe:'^\\d{5,6}$',suspense:'SUS,000000',noMaster:false},S||{});
   const P=progress||(()=>{});
   // The default code patterns follow the Davangere books (P-codes are vendors, 5 or 6 digits are customers).
   // When the books use another scheme (for example VEND_000123 and CUST_000456), the patterns are read from the codes themselves.
@@ -1312,7 +1349,7 @@ function run(bankIn,booksIn,master,S,progress){
       if(ven.length&&pat(ven)) S.vendorRe=pat(ven); if(cus.length&&pat(cus)) S.customerRe=pat(cus); S.autoCodes=true; } }
   const vendRe=new RegExp(S.vendorRe), custRe=new RegExp(S.customerRe), susp=new Set(String(S.suspense).toUpperCase().split(/[\s,]+/).filter(Boolean));
   const bn=bankIn.map((r,i)=>({i,date:r.date,narr:r.narr==null?'':String(r.narr),ref:r.ref,amt:cents(r.amt),src:r.src,srow:r.srow,m:-1,how:'',gid:-1,gkind:'',keys:[]}));
-  const bk=booksIn.map((r,j)=>({j,date:r.date,vch:r.vch,party:r.party==null?'':String(r.party),code:r.code==null?'':String(r.code).trim(),chq:r.chq,ref2:r.ref2,amt:cents(r.amt),src:r.src,srow:r.srow,m:-1,how:'',gid:-1,gkind:'',keys:[]}));
+  const bk=booksIn.map((r,j)=>({j,date:r.date,vch:r.vch,party:r.party==null?'':String(r.party),code:r.code==null?'':String(r.code).trim(),chq:r.chq,ref2:r.ref2,amt:cents(r.amt),bacct:r.bacct||'',src:r.src,srow:r.srow,m:-1,how:'',gid:-1,gkind:'',keys:[]}));
   // reference keys
   const mkBankKeys=b=>{ const ks=new Set(); const k=normRef(b.ref); if(usable(k)) ks.add(k); if(!usable(k)){ (b.narr.match(/[A-Za-z0-9]{6,}/g)||[]).forEach(t=>{ if(!/\d/.test(t)) return; if(t.length<9&&/^\d+$/.test(t)&&(/^(0[1-9]|[12]\d|3[01])(0[1-9]|1[0-2])20\d\d$/.test(t)||/^20\d\d(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])$/.test(t))) return; ks.add(normRef(t)); }); } { // cheque number: "CLG/<name>/<chq no>/..." deposits and "REJECT:<chq no>:reason" returns carry the cheque number
       const pp=b.narr.split('/'); if(/^CLG$/i.test((pp[0]||'').trim())&&pp[2]&&/^\d{3,8}$/.test(pp[2].trim())) ks.add('CHQ:'+(+pp[2].trim()));
@@ -1366,7 +1403,7 @@ function run(bankIn,booksIn,master,S,progress){
   pairBank(b=>{ const k=bkeys(b); return k?k+'|'+Math.abs(b.amt):null; },'Bank offsetting pair');
   // return keyword lines pair with an opposite same-amount line within 15 days
   { const un=bn.filter(b=>b.m<0&&b.gid<0); const by=new Map(); for(const b of un){ const k=Math.abs(b.amt); if(!by.has(k)) by.set(k,[]); by.get(k).push(b); }
-    for(const b of un){ if(b.gid>=0||!RETKW.test(b.narr)) continue; const c=(by.get(Math.abs(b.amt))||[]).filter(x=>x!==b&&x.gid<0&&x.m<0&&Math.sign(x.amt)!==Math.sign(b.amt)&&Math.abs(x.date-b.date)<=15&&!RETKW.test(x.narr)).sort((x,y)=>Math.abs(x.date-b.date)-Math.abs(y.date-b.date));
+    for(const b of un){ if(b.gid>=0||!RETKW.test(b.narr)) continue; const c=(by.get(Math.abs(b.amt))||[]).filter(x=>x!==b&&x.gid<0&&x.m<0&&Math.sign(x.amt)!==Math.sign(b.amt)&&Math.abs(x.date-b.date)<=S.revWin&&!RETKW.test(x.narr)).sort((x,y)=>Math.abs(x.date-b.date)-Math.abs(y.date-b.date));
       if(c.length){ g++; b.gid=c[0].gid=g; b.gkind=c[0].gkind='Bank offsetting pair'; } } }
   // ---- offsetting pairs in Books
   const pairBook=(keyf,label)=>{ const d=new Map(); for(const k of inPeriod){ if(k.m>=0||k.gid>=0) continue; const key=keyf(k); if(key==null) continue; if(!d.has(key)) d.set(key,[]); d.get(key).push(k); }
@@ -1474,6 +1511,27 @@ function run(bankIn,booksIn,master,S,progress){
       const best=sols[0], p0=score(best); const tied=sols.filter(q=>{ const r=score(q); return r[0]===p0[0]&&r[1]===p0[1]&&r[2]===p0[2]; }); if(tied.length>1) continue;
       const items=W.slice(best.a,best.z+1).filter((k,i)=>!best.ex.includes(best.a+i)); if(items.length<3) continue;
       g++; bulk.push({bank:[b],books:items}); b.gid=g; b.gkind='Deposit batch'; b.gnote={ex:best.ex.length,from:W[best.a].date,to:W[best.z].date}; items.forEach(k=>{ k.gid=g; k.gkind='Deposit batch'; const l=pool.get(k.amt); if(l){ const x=l.indexOf(k); if(x>=0) l.splice(x,1); } }); } }
+  // ---- amounts written into a Books narration. An accounts clerk often writes the breakdown of a pooled entry into it,
+  // "CASH DEPOSIT (236100+14966+3000)", or a repeated charge as "236*4=944". Each component is looked for as a separate bank
+  // line anywhere in the period; the group is taken only when every component is found and the components add up to the entry.
+  // If they do not add up, each component is tried with one digit corrected: a note that reads 1496 where the bank shows 14966 is a typed note.
+  P('Reading amounts written in Books narrations');
+  { const txtOf=k=>[k.party,k.vch,k.chq,k.ref2].filter(v=>v!=null&&v!=='').join(' ');
+    const parseComps=t=>{ const out=[]; t=String(t||''); const rx=/\(([^()]*\+[^()]*)\)/g; let m; while((m=rx.exec(t))){ const parts=m[1].split('+').map(x=>x.replace(/[,\s]/g,'')); if(parts.length>=2&&parts.every(q=>/^\d+(\.\d{1,2})?$/.test(q))) out.push(parts); }
+      if(!out.length){ const m2=/(\d[\d,]*(?:\.\d{1,2})?(?:\s*\+\s*\d[\d,]*(?:\.\d{1,2})?)+)/.exec(t); if(m2){ const parts=m2[1].split('+').map(x=>x.replace(/[,\s]/g,'')); if(parts.length>=2&&parts.every(q=>/^\d+(\.\d{1,2})?$/.test(q))) out.push(parts); } }
+      return out; };
+    const parseMult=t=>{ const m=/(\d[\d,]*(?:\.\d{1,2})?)\s*[*xX\u00d7]\s*(\d{1,3})\s*=\s*(\d[\d,]*(?:\.\d{1,2})?)/.exec(String(t||'')); if(!m) return null; const u=cents(+m[1].replace(/,/g,'')), n=+m[2], tot=cents(+m[3].replace(/,/g,'')); return (n>=2&&u>0&&u*n===tot)?{u,n,tot}:null; };
+    const variants=str=>{ const o=new Set(); const d=str.split('.')[0]; if(str.includes('.')||d.length<2) return o; for(let i=0;i<d.length;i++){ o.add(d.slice(0,i)+d.slice(i+1)); for(let c=0;c<10;c++) if(String(c)!==d[i]) o.add(d.slice(0,i)+c+d.slice(i+1)); } for(let i=0;i<=d.length;i++) for(let c=0;c<10;c++) o.add(d.slice(0,i)+c+d.slice(i)); o.delete(d); return new Set([...o].filter(x=>x&&!/^0/.test(x))); };
+    const idx=new Map(); for(const b of bn){ if(b.m>=0||b.gid>=0) continue; const key=Math.abs(b.amt); if(!idx.has(key)) idx.set(key,[]); idx.get(key).push(b); }
+    const free=(sg,val,date,used)=>{ const l=(idx.get(val)||[]).filter(b=>b.m<0&&b.gid<0&&!used.has(b)&&Math.sign(b.amt)===sg); l.sort((x,y)=>Math.abs(x.date-date)-Math.abs(y.date-date)||x.i-y.i); return l[0]||null; };
+    const take2=(k,lines,kind,note)=>{ g++; k.gid=g; k.gkind=kind; k.m=lines[0].i; k.compNote=note; lines.forEach(b=>{ b.gid=g; b.gkind=kind; b.m=k.j; b.how='Aggregated ('+(kind==='Repeated charge'?'repeated charge':'narration components')+')'; }); aggs.push({bank:lines,book:k}); const l=pool.get(k.amt); if(l){ const x=l.indexOf(k); if(x>=0) l.splice(x,1); } };
+    const ks=inPeriod.filter(k=>k.m<0&&k.gid<0&&Math.abs(k.amt)>=1000).sort((x,y)=>Math.abs(y.amt)-Math.abs(x.amt)||x.j-y.j);
+    for(const k of ks){ if(k.m>=0||k.gid>=0) continue; const sg=Math.sign(k.amt), tot=Math.abs(k.amt), tx=txtOf(k);
+      const mu=parseMult(tx); if(mu&&mu.tot===tot){ const used=new Set(); const lines=[]; for(let q=0;q<mu.n;q++){ const b=free(sg,mu.u,k.date,used); if(!b) break; used.add(b); lines.push(b); } if(lines.length===mu.n){ take2(k,lines,'Repeated charge',mu.n+' x '+money(mu.u/100)+' = '+money(tot/100)+' as written in the Books narration'); continue; } }
+      let done=false; for(const comp of parseComps(tx)){ if(done) break; const vals=comp.map(c=>cents(+c)); const sum=vals.reduce((a,b)=>a+b,0);
+        const find=(vs)=>{ const used=new Set(); const lines=[]; for(const v of vs){ const b=free(sg,v,k.date,used); if(!b) return null; used.add(b); lines.push(b); } return lines; };
+        if(sum===tot){ const lines=find(vals); if(lines){ take2(k,lines,'Narration components','The Books narration lists '+comp.length+' amounts ('+comp.join(' + ')+') and each is a separate bank line'); done=true; } }
+        else { for(let i=0;i<comp.length&&!done;i++){ for(const v2 of variants(comp[i])){ const vs=vals.slice(); vs[i]=cents(+v2); if(vs.reduce((a,b)=>a+b,0)!==tot) continue; const lines=find(vs); if(lines){ take2(k,lines,'Narration components','The Books narration lists '+comp.length+' amounts ('+comp.join(' + ')+'). The bank shows '+v2+' where the narration says '+comp[i]+', a typing slip in the note, not a missing deposit; the amounts then add up exactly'); done=true; break; } } } } } } }
   // ---- vendor bulk: one bank payment to a named party = several unmatched Books entries of that same party,
   // booked on different days (wider window than the date passes). Every exact combination is listed and the one
   // whose Books dates lie closest to the bank date is taken, but only when it is clearly the best (no tie).
@@ -1522,6 +1580,41 @@ function run(bankIn,booksIn,master,S,progress){
   { const ub=bn.filter(b=>b.m<0&&b.gid<0); const gb=new Map(); for(const b of ub){ const k=b.date+'|'+Math.sign(b.amt); if(!gb.has(k)) gb.set(k,[]); gb.get(k).push(b); }
     const uk=inPeriod.filter(k=>k.m<0&&k.gid<0); const gk=new Map(); for(const k of uk){ const key=k.date+'|'+Math.sign(k.amt); if(!gk.has(key)) gk.set(key,[]); gk.get(key).push(k); }
     for(const [key,bl] of gb){ const kl=gk.get(key)||[]; if(bl.length===1&&kl.length===1&&Math.abs(bl[0].amt-kl[0].amt)<=cents(S.mismatchLimit)&&nameScore(bl[0].narr,kl[0].party)>=0.7){ link(bl[0],kl[0],'Same date, amount differs'); } } }
+  // ---- the same amount, unique on both sides, dated further apart than the window (a payment keyed late, a deposit booked on receipt of the slip).
+  // It is matched, and reported as a date difference so the timing is visible. Without a name on both sides to confirm it, only amounts of Rs 5,000 and above are taken.
+  if(S.farMatch!==false){ P('Pairing the same amount dated far apart');
+    const fb=bn.filter(b=>b.m<0&&b.gid<0), fk=inPeriod.filter(k=>k.m<0&&k.gid<0); const bA=new Map(), kA=new Map();
+    for(const b of fb){ if(!bA.has(b.amt)) bA.set(b.amt,[]); bA.get(b.amt).push(b); } for(const k of fk){ if(!kA.has(k.amt)) kA.set(k.amt,[]); kA.get(k.amt).push(k); }
+    for(const [a,bl] of [...bA.entries()].sort((x,y)=>Math.abs(y[0])-Math.abs(x[0])||x[0]-y[0])){ const kl=kA.get(a); if(!kl||bl.length!==1||kl.length!==1) continue; const b=bl[0],k=kl[0]; if(b.m>=0||k.m>=0||b.gid>=0||k.gid>=0) continue;
+      const nm=bankName(b.narr); const known=!!(nm&&k.party); if(known&&sameName(nm,k.party)===false) continue; if(!(known&&sameName(nm,k.party))&&Math.abs(a)<500000) continue;
+      link(b,k,'P4 Amount, dated '+Math.abs(b.date-k.date)+' days apart (unique)'); } }
+  // ---- a large bank line made up of Books entries that the books dated on different days (a fixed deposit booked in parts, for example).
+  // Only lines of Rs 10 lakh and above; the entries are the unmatched ones of the same direction nearest in date, and the combination must be the only
+  // one that adds up exactly and must include an entry dated within the date window of the bank line.
+  P('Looking for entries dated on different days');
+  { const ub=bn.filter(b=>b.m<0&&b.gid<0&&Math.abs(b.amt)>=100000000).sort((a,b)=>Math.abs(b.amt)-Math.abs(a.amt)||a.i-b.i);
+    for(const b of ub){ if(b.m>=0||b.gid>=0) continue; const cand=inPeriod.filter(k=>k.m<0&&k.gid<0&&Math.sign(k.amt)===Math.sign(b.amt)&&Math.abs(k.amt)<Math.abs(b.amt)).sort((x,y)=>Math.abs(x.date-b.date)-Math.abs(y.date-b.date)||x.j-y.j).slice(0,22); if(cand.length<2) continue;
+      let best=null,bc=Infinity,bsig='',tie=false,nodes=0; const cur=[]; const tgt=b.amt;
+      (function rec(i,sum,cost){ if(nodes++>300000) return; if(sum===tgt&&cur.length>=2){ const sg=cur.map(k=>k.amt+'@'+k.date).sort().join(','); if(cost<bc){ best=cur.slice(); bc=cost; bsig=sg; tie=false; } else if(cost===bc&&sg!==bsig) tie=true; return; }
+        if(i>=cand.length) return; let rest=0; for(let q=i;q<cand.length;q++) rest+=Math.abs(cand[q].amt); if(Math.abs(tgt-sum)>rest) return;
+        if(Math.abs(sum+cand[i].amt)<=Math.abs(tgt)){ cur.push(cand[i]); rec(i+1,sum+cand[i].amt,cost+Math.abs(cand[i].date-b.date)); cur.pop(); } rec(i+1,sum,cost); })(0,0,0);
+      if(!best||tie) continue; const pick=best.slice().sort((x,y)=>x.j-y.j); if(!pick.some(k=>Math.abs(k.date-b.date)<=S.dateWin)) continue;
+      g++; bulk.push({bank:[b],books:pick}); b.gid=g; b.gkind='Date spread group'; pick.forEach(k=>{ k.gid=g; k.gkind='Date spread group'; const l=pool.get(k.amt); if(l){ const x=l.indexOf(k); if(x>=0) l.splice(x,1); } }); } }
+  // ---- days proved as a group: the lines do not pair one to one, but the bank total and the Books total of that day and direction agree.
+  // The day is shown as proved in total and says so; it was not traced line by line.
+  P('Proving remaining days as groups');
+  { const kd=new Map(); for(const k of inPeriod){ if(k.m>=0||k.gid>=0) continue; const key=k.date+'|'+Math.sign(k.amt); if(!kd.has(key)) kd.set(key,[]); kd.get(key).push(k); }
+    const gb=new Map(); for(const b of bn){ if(b.m>=0||b.gid>=0) continue; const key=b.date+'|'+Math.sign(b.amt); if(!gb.has(key)) gb.set(key,[]); gb.get(key).push(b); }
+    for(const [key,bl] of gb){ const kl=kd.get(key); if(!kl||(bl.length<2&&kl.length<2)) continue; if(bl.length>60||kl.length>60) continue; if(bl.reduce((a,b)=>a+b.amt,0)!==kl.reduce((a,k)=>a+k.amt,0)) continue;
+      g++; bulk.push({bank:bl,books:kl,day:true}); bl.forEach(b=>{ b.gid=g; b.gkind='Day group'; }); kl.forEach(k=>{ k.gid=g; k.gkind='Day group'; const l=pool.get(k.amt); if(l){ const x=l.indexOf(k); if(x>=0) l.splice(x,1); } }); } }
+  // ---- Books entries that clear each other, found last so that no bank line is left unmatched because of them
+  pairBook(k=>k.keys.length&&usable(k.keys[0])?k.keys[0]+'|'+Math.abs(k.amt):null,'Book offsetting pair (same reference)');
+  // one Books entry cleared by several of the opposite direction for the same party (a suspense amount moved to customer accounts, for example), any date in the period
+  { const byP=new Map(); for(const k of inPeriod){ if(k.m>=0||k.gid>=0) continue; const key=sig(k.party).join(' '); if(!key) continue; if(!byP.has(key)) byP.set(key,[]); byP.get(key).push(k); }
+    for(const arr of byP.values()){ if(arr.length<3||arr.length>60) continue; arr.sort((x,y)=>Math.abs(y.amt)-Math.abs(x.amt));
+      for(const e of arr){ if(e.gid>=0) continue; const opp=arr.filter(x=>x!==e&&x.gid<0&&Math.sign(x.amt)!==Math.sign(e.amt)&&Math.abs(x.amt)<Math.abs(e.amt)).slice(0,20); if(opp.length<2) continue;
+        const idx=subsetUnique(opp.map(x=>({amt:Math.abs(x.amt)})),Math.abs(e.amt)); if(!idx||idx.length<2) continue;
+        g++; e.gid=g; e.gkind='Book offsetting pair (one entry clears several)'; for(const i of idx){ opp[i].gid=g; opp[i].gkind=e.gkind; } for(const x of [e,...idx.map(i=>opp[i])]){ const l=pool.get(x.amt); if(l){ const q=l.indexOf(x); if(q>=0) l.splice(q,1); } } } } }
   // ---- reversal swap: Books entry matched to the first cheque although it belongs to a re-presented cheque
   const bypair=new Map(); for(const b of bn) if(b.gkind==='Bank offsetting pair'){ if(!bypair.has(b.gid)) bypair.set(b.gid,[]); bypair.get(b.gid).push(b); }
   const swaps=[];
@@ -1536,12 +1629,14 @@ function run(bankIn,booksIn,master,S,progress){
   // ======== classification
   P('Classifying');
   // ---- plain-language explanation of every group
-  const METHOD={'Reference group':'Same reference','Date group':'Same day total','Batch run':'Payment batch','Deposit batch':'Deposit batch','Vendor group':'One payment, several invoices','Part payments':'One entry paid in parts','Vendor part payments':'One entry paid in parts (same party)','Aggregated':'Several lines, one entry'};
+  const METHOD={'Reference group':'Same reference','Date group':'Same day total','Batch run':'Payment batch','Deposit batch':'Deposit batch','Vendor group':'One payment, several invoices','Part payments':'One entry paid in parts','Vendor part payments':'One entry paid in parts (same party)','Aggregated':'Several lines, one entry','Narration components':'Amounts written in the Books narration','Repeated charge':'One entry covers a repeated charge','Day group':'Same day total, not traced line by line','Date spread group':'One payment, entries dated on different days'};
   const rng=(a,b)=>a===b?fmtD(a):fmtD(a)+' to '+fmtD(b);
   const explainBulk=(b,books)=>{ const tot=Math.abs(books.reduce((x,k)=>x+k.amt,0)), n=books.length, d0=Math.min(...books.map(k=>k.date)), d1=Math.max(...books.map(k=>k.date)), rows=books.map(k=>k.srow).sort((x,y)=>x-y);
     let t='One bank line of '+money(Math.abs(b.amt)/100)+' on '+fmtD(b.date)+' (Bank row '+b.srow+') is explained by '+n+' Books entries (Books rows '+rows[0]+' to '+rows[rows.length-1]+') that add up to '+money(tot/100)+'. The difference is nil.';
     const gk=b.gkind;
-    if(gk==='Reference group') t+=' All '+n+' entries carry the same reference as the bank line, so they belong together.';
+    if(gk==='Day group'){ const bl=bulkOf.get(b.i); const nb=bl.bank.length; t='The statement shows '+nb+' line'+(nb===1?'':'s')+' on '+fmtD(b.date)+' that add up to '+money(Math.abs(bl.bank.reduce((x,y)=>x+y.amt,0))/100)+', and the Books has '+n+' entr'+(n===1?'y':'ies')+' of that day (Books rows '+rows[0]+' to '+rows[rows.length-1]+') that add up to the same figure. The day is proved in total. It was NOT traced line by line, because the lines do not pair one to one and no single combination is the only one that fits.'; return t; }
+    if(gk==='Date spread group') t+=' The entries are dated '+rng(d0,d1)+', the books recorded the payment in parts on different days. Of the unmatched entries nearest in date this is the combination that adds up exactly with the dates closest to the bank line, and no other combination fits as well; at least one entry is dated within '+S.dateWin+' day(s) of the bank line.';
+    else if(gk==='Reference group') t+=' All '+n+' entries carry the same reference as the bank line, so they belong together.';
     else if(gk==='Date group') t+=' The entries are dated '+rng(d0,d1)+', close to the bank date. Of the unmatched entries of that period, this is the only combination that adds up exactly.';
     else if(gk==='Deposit batch'){ const x=b.gnote||{}; t+=' This is a consolidated deposit: the entries are the receipts booked from '+rng(d0,d1)+', taken in the order they were booked.'+(x.ex?' '+x.ex+' other receipt(s) booked in that period were left out because the deposit adds up exactly without them. They are probably cheques not yet cleared or returned, and stay listed as Books-only entries.':''); }
     else if(gk==='Vendor group') t+=' All '+n+' entries belong to the same party as the bank line and are dated '+rng(d0,d1)+'. Every combination of that party\'s unmatched entries that adds up exactly was tried; this is the one closest in date to the bank line and no other fits as well.';
@@ -1551,6 +1646,7 @@ function run(bankIn,booksIn,master,S,progress){
     if(gk==='Batch run'){ const sr=lines.map(l=>{ const m=/^\S*?(\d{3,})\b/.exec((l.narr||'').trim().split(/\s+/)[0]||''); return m?+m[1]:null; }); const ok=sr.every(x=>x!=null); t+=' They are one payment batch: '+(ok?'consecutive payment numbers '+Math.min(...sr)+' to '+Math.max(...sr)+' of the same kind on '+fmtD(d0):'consecutive statement lines of the same kind on '+fmtD(d0))+'. A stretch of consecutive lines that adds up to a Books entry, and is the only one that does, is taken as the batch.'; }
     else if(gk==='Part payments') t+=' One Books entry was paid in '+n+' parts within a few days of its Books date, all of the same kind.';
     else if(gk==='Vendor part payments') t+=' All the lines are payments to the same party as the Books entry.';
+    else if(gk==='Narration components'||gk==='Repeated charge') t+=' '+(k.compNote||'')+'.';
     else t+=' They are lines of the same kind on the same day.';
     return t; };
   const recs=[]; const bookUsed=new Set(); let bi=0,ai=0,ri=0; const revId=new Map(),aggId=new Map();
@@ -1572,7 +1668,7 @@ function run(bankIn,booksIn,master,S,progress){
     d.bname2=nm;
     if(bulkOf.has(b.i)){ const bl=bulkOf.get(b.i); d.kind='bulk'; const bks=bl.books.slice().sort((x,y)=>x.srow-y.srow); const tot=bks.reduce((s,k)=>s+k.amt,0)/100;
       Object.assign(d,{krow:bks.map(k=>k.srow).join(', '),vch:bks.length+' entries',kdate:(new Set(bks.map(k=>k.date)).size===1?bks[0].date:null),kpay:tot<0?-tot:null,krec:tot>0?tot:null,kcode:'Several',kname:b.amt<0?'Several payees':'Several customers',file:[...new Set(bks.map(k=>k.src))].join(', '),frow:(bks.length>1?Math.min(...bks.map(k=>k.srow))+' to '+Math.max(...bks.map(k=>k.srow)):bks[0].srow),books:bks,cat:'Mapped - Bulk Entries',why:'One bank payment, several Books entries'});
-      bks.forEach(k=>bookUsed.add(k.j));
+      bks.forEach(k=>bookUsed.add(k.j)); if(bl.day&&bl.bank[0]!==b){ d.kpay=null; d.krec=null; }
       if(!bl.gidTag){ bi++; bl.gidTag='G'+bi; } d.grp=bl.gidTag; d.method=METHOD[b.gkind]||'Several entries'; d.explain=explainBulk(b,bks); recs.push(d); continue; }
     if(aggOf.has(b.i)){ const a=aggOf.get(b.i); const k=a.book; d.kind='agg'; Object.assign(d,{krow:k.srow,vch:k.vch,kdate:k.date,kcode:k.code,kname:k.party,file:k.src,frow:k.srow,cat:'Mapped - Bulk Entries',why:'Several bank lines, one Books entry'}); if(a.bank[0]===b){ const t=k.amt/100; if(t<0) d.kpay=-t; else d.krec=t; } bookUsed.add(k.j);
       if(!aggId.has(a)){ bi++; aggId.set(a,'G'+bi);} d.grp=aggId.get(a); d.gn=a.bank.length; d.method=METHOD[a.bank[0].gkind]||'Several lines, one entry'; d.explain=a.expl||(a.expl=explainAgg(a.bank,k)); recs.push(d); continue; }
@@ -1582,7 +1678,7 @@ function run(bankIn,booksIn,master,S,progress){
       const near=inPeriod.filter(k=>k.m<0&&k.gid<0&&Math.sign(k.amt)===Math.sign(b.amt)&&k.date===b.date); d.hint=near.length>1?` ${near.length} Books entries of the same day and direction are also unmatched (total ${money(Math.abs(near.reduce((s,k)=>s+k.amt,0))/100)}); a bulk entry may exist but could not be proved`:''; recs.push(d); continue; }
     const k=bk[b.m]; bookUsed.add(k.j);
     const kbook=cents(0), a=k.amt/100;
-    Object.assign(d,{krow:k.srow,vch:k.vch,kdate:k.date,kpay:a<0?-a:null,krec:a>0?a:null,kcode:k.code,kname:k.party,file:k.src,frow:k.srow,how:b.how});
+    Object.assign(d,{krow:k.srow,vch:k.vch,kdate:k.date,kpay:a<0?-a:null,krec:a>0?a:null,kcode:k.code,kname:k.party,file:k.src,frow:k.srow,how:b.how,vtype:vtypeOf(k.vch),bacct:k.bacct});
     const bnm=cleanBook(k.party); const code=k.code; d.kcode=code;
         const mname=(master&&master.size&&master.has(code))?master.get(code):null; d.mname=mname;
     // ref check
@@ -1624,12 +1720,50 @@ function run(bankIn,booksIn,master,S,progress){
   // books only / outside
   const bkonly=[],outside=[]; const gmap=new Map(); for(const k of inPeriod) if(k.gid>=0&&k.m<0&&k.gkind.startsWith('Book offsetting')){ if(!gmap.has(k.gid)) gmap.set(k.gid,[]); gmap.get(k.gid).push(k); }
   const bkp=new Map();
-  for(const k of inPeriod){ if(bookUsed.has(k.j)||k.m>=0) continue; const d={kind:'bkonly',_k:k,cat:'Mismatch',krow:k.srow,vch:k.vch,kdate:k.date,kpay:k.amt<0?-k.amt/100:null,krec:k.amt>0?k.amt/100:null,kcode:k.code,kname:k.party,file:k.src,frow:k.srow,brow:null,bdate:null,ref:null,wd:null,dp:null,bname:null,narr:null,S:'-',T:'-',U:'-',V:'-',W:'-',mname:null};
-    if(k.gkind&&k.gkind.startsWith('Book offsetting')){ d.why=k.gkind.replace('Book offsetting pair (','Books entry offsets another entry of the ').replace(')','')+', no bank line'; d.bpart=(gmap.get(k.gid)||[]).filter(x=>x!==k).map(x=>x.srow); d.grp='BKP-'+String(k.gid).padStart(3,'0'); }
+  for(const k of inPeriod){ if(bookUsed.has(k.j)||k.m>=0) continue; const d={kind:'bkonly',_k:k,cat:'Mismatch',vtype:vtypeOf(k.vch),bacct:k.bacct,krow:k.srow,vch:k.vch,kdate:k.date,kpay:k.amt<0?-k.amt/100:null,krec:k.amt>0?k.amt/100:null,kcode:k.code,kname:k.party,file:k.src,frow:k.srow,brow:null,bdate:null,ref:null,wd:null,dp:null,bname:null,narr:null,S:'-',T:'-',U:'-',V:'-',W:'-',mname:null};
+    if(k.gkind&&k.gkind.startsWith('Book offsetting')){ d.why=/clears several/.test(k.gkind)?'Books entries of the same party that clear each other (one entry against several, together nil), no bank line':k.gkind.replace('Book offsetting pair (','Books entry offsets another entry of the ').replace(')','')+', no bank line'; d.bpart=(gmap.get(k.gid)||[]).filter(x=>x!==k).map(x=>x.srow); d.grp='BKP-'+String(k.gid).padStart(3,'0'); }
     else { d.why='No matching bank line'; d.bpart=[]; d.grp=null; }
     recs.push(d); }
   for(const k of outPeriod) outside.push({krow:k.srow,vch:k.vch,kdate:k.date,kpay:k.amt<0?-k.amt/100:null,krec:k.amt>0?k.amt/100:null,kcode:k.code,kname:k.party,chq:k.chqStr,file:k.src,frow:k.srow});
   const freeBk=inPeriod.filter(k=>!bookUsed.has(k.j)&&k.m<0);
+  // ---- before anything is called untraced the whole period is searched on both sides, and the line says where it looked and what came back.
+  // A matching amount that exists but was already used by another line is a different problem (a human has to confirm a split) from no such amount at all.
+  const SEARCH=(()=>{ const allK=inPeriod.concat(outPeriod); const kAmt=new Map(), bAmt=new Map(), kNum=new Map(), bNum=new Map(), kTok=new Map(), bTok=new Map();
+    const add=(m,key,v)=>{ if(!m.has(key)) m.set(key,[]); const l=m.get(key); if(l.length<40) l.push(v); };
+    const nums=t=>{ const o=new Set(); for(const m of String(t||'').matchAll(/\d[\d,]*(?:\.\d{1,2})?/g)){ const raw=m[0].replace(/,/g,''); if(raw.replace('.','').length<3) continue; o.add(cents(+raw)); } return o; };
+    const toks=t=>{ const o=new Set(); for(const m of String(t||'').toUpperCase().match(/[A-Z0-9]{6,}/g)||[]){ if(/\d/.test(m)) o.add(normRef(m)); } return o; };
+    const kText=k=>[k.party,k.vch,k.chq,k.ref2].filter(v=>v!=null&&v!=='').join(' ');
+    for(const k of allK){ add(kAmt,Math.abs(k.amt),k); const t=kText(k); for(const n of nums(t)) add(kNum,n,k); for(const x of toks(t)) add(kTok,x,k); }
+    for(const b of bn){ add(bAmt,Math.abs(b.amt),b); for(const n of nums(b.narr)) add(bNum,n,b); for(const x of toks(b.narr)) add(bTok,x,b); }
+    const bUsed=b=>b.m>=0||b.gid>=0, kUsed=k=>bookUsed.has(k.j)||k.m>=0;
+    const subsetAny=(items,target,maxK)=>{ let nodes=0; const ord=items.map((v,i)=>[v,i]).sort((a,b)=>b[0]-a[0]); const rec=(st,left,k,pick)=>{ if(left===0&&pick.length>=2) return pick.slice(); if(k===0||++nodes>40000) return null; for(let q=st;q<ord.length;q++){ if(ord[q][0]>left) continue; pick.push(ord[q][1]); const r=rec(q+1,left-ord[q][0],k-1,pick); if(r) return r; pick.pop(); } return null; }; return rec(0,target,maxK,[]); };
+    const days=(a,b)=>Math.abs(a-b)+' day'+(Math.abs(a-b)===1?'':'s');
+    const rowsOf=(l,f)=>l.slice(0,4).map(f).join(', ')+(l.length>4?' and '+(l.length-4)+' more':'');
+    const lim=a=>Math.min(cents(S.mismatchLimit),Math.max(100,Math.round(a*0.02)));
+    const joinRes=a=>{ const out=a.filter(Boolean); return out.length?out.join(' '):''; };
+    // a bank line with no Books entry
+    const forBank=b=>{ const a=Math.abs(b.amt), sg=Math.sign(b.amt); const r=[];
+      const same=(kAmt.get(a)||[]).filter(k=>Math.sign(k.amt)===sg); const fr=same.filter(k=>!kUsed(k)), cu=same.filter(k=>kUsed(k));
+      if(!same.length) r.push('No Books entry of exactly this amount exists in the whole period.'); else { if(fr.length) r.push('Unmatched Books entr'+(fr.length===1?'y':'ies')+' of exactly this amount: row'+(fr.length===1?' ':'s ')+rowsOf(fr,k=>k.srow+' ('+fmtD(k.date)+', '+days(k.date,b.date)+' from the bank date)')+'; '+(fr.length===1?'it was not taken because the match is not proved: for a small amount without a name on both sides, or with names that differ, a match this far apart in date needs a person to confirm it. Check the voucher.':'more than one candidate fits, so none was taken without proof.')); if(cu.length) r.push(cu.length+' Books entr'+(cu.length===1?'y':'ies')+' of exactly this amount exist but already belong to other bank lines (row'+(cu.length===1?' ':'s ')+rowsOf(cu,k=>k.srow)+'); a split between them needs a person to confirm.'); }
+      const pool2=allK.filter(k=>Math.sign(k.amt)===sg&&!kUsed(k)&&Math.abs(Math.abs(k.date-b.date))<=60&&Math.abs(k.amt)<a).sort((x,y)=>Math.abs(x.date-b.date)-Math.abs(y.date-b.date)).slice(0,24);
+      if(pool2.length>=2){ const pick=subsetAny(pool2.map(k=>Math.abs(k.amt)),a,4); if(pick) r.push('Unmatched Books entries (rows '+pick.map(i=>pool2[i].srow).join(', ')+') add up to this amount, but they are not taken as a group because the match is not proved.'); }
+      { const inN=(kNum.get(a)||[]).filter(k=>true); if(inN.length) r.push('This amount is written inside the narration of Books row '+rowsOf(inN,k=>k.srow)+'.'); const inB=(bNum.get(a)||[]).filter(x=>x!==b); if(inB.length) r.push('This amount is written inside the narration of other bank line(s) (row '+rowsOf(inB,x=>x.srow)+').'); }
+      { const hits=new Map(); for(const key of b.keys){ for(const k of (kTok.get(key)||[])) hits.set(k.j,k); } if(hits.size) r.push('The reference '+b.keys[0]+' appears in the narration of Books row '+rowsOf([...hits.values()],k=>k.srow+' (amount '+money(Math.abs(k.amt)/100)+')')+'.'); }
+      { const near=allK.filter(k=>Math.sign(k.amt)===sg&&!kUsed(k)&&k.amt!==b.amt&&Math.abs(Math.abs(k.amt)-a)<=lim(a)).sort((x,y)=>Math.abs(Math.abs(x.amt)-a)-Math.abs(Math.abs(y.amt)-a)); if(near.length) r.push('Nearest unmatched Books entry within the keying tolerance: row '+near[0].srow+' of '+money(Math.abs(near[0].amt)/100)+' on '+fmtD(near[0].date)+' (differs by '+money(Math.abs(Math.abs(near[0].amt)-a)/100)+').'); }
+      { const opp=(bAmt.get(a)||[]).filter(x=>x!==b&&Math.sign(x.amt)!==sg); const oppK=(kAmt.get(a)||[]).filter(k=>Math.sign(k.amt)!==sg); if(opp.length) r.push('An equal and opposite bank line exists (row '+rowsOf(opp,x=>x.srow)+').'); if(oppK.length) r.push('An equal and opposite Books entry exists (row '+rowsOf(oppK,k=>k.srow)+').'); }
+      return 'Searched the whole period for this amount, for entries that add up to it, for the amount and the reference inside narrations, for a near miss and for an equal and opposite entry. '+joinRes(r); };
+    // a Books entry with no bank line
+    const forBook=k=>{ const a=Math.abs(k.amt), sg=Math.sign(k.amt); const r=[];
+      const same=(bAmt.get(a)||[]).filter(b=>Math.sign(b.amt)===sg); const fr=same.filter(b=>!bUsed(b)), cu=same.filter(b=>bUsed(b));
+      if(!same.length) r.push('No bank line of exactly this amount exists in the whole period.'); else { if(fr.length) r.push('Unmatched bank line'+(fr.length===1?'':'s')+' of exactly this amount: row'+(fr.length===1?' ':'s ')+rowsOf(fr,b=>b.srow+' ('+fmtD(b.date)+', '+days(b.date,k.date)+' from the Books date)')+'; '+(fr.length===1?'it was not taken because the match is not proved: for a small amount without a name on both sides, or with names that differ, a match this far apart in date needs a person to confirm it. Check the voucher.':'more than one candidate fits, so none was taken without proof.')); if(cu.length) r.push(cu.length+' bank line'+(cu.length===1?'':'s')+' of exactly this amount exist but already belong to other Books entries (row'+(cu.length===1?' ':'s ')+rowsOf(cu,b=>b.srow)+'); a split between them needs a person to confirm.'); }
+      const pool2=bn.filter(b=>Math.sign(b.amt)===sg&&!bUsed(b)&&Math.abs(b.date-k.date)<=60&&Math.abs(b.amt)<a).sort((x,y)=>Math.abs(x.date-k.date)-Math.abs(y.date-k.date)).slice(0,24);
+      if(pool2.length>=2){ const pick=subsetAny(pool2.map(b=>Math.abs(b.amt)),a,4); if(pick) r.push('Unmatched bank lines (rows '+pick.map(i=>pool2[i].srow).join(', ')+') add up to this amount, but they are not taken as a group because the match is not proved.'); }
+      { const inB=(bNum.get(a)||[]); if(inB.length) r.push('This amount is written inside the narration of bank row '+rowsOf(inB,b=>b.srow)+'.'); const inK=(kNum.get(a)||[]).filter(x=>x!==k); if(inK.length) r.push('This amount is written inside the narration of '+(inK.length===1?'another Books entry':'other Books entries')+' (row '+rowsOf(inK,x=>x.srow)+').'); }
+      { const hits=new Map(); for(const key of k.keys){ for(const b of (bTok.get(key)||[])) hits.set(b.i,b); } if(hits.size) r.push('The reference '+k.keys[0]+' appears in the narration of bank row '+rowsOf([...hits.values()],b=>b.srow+' (amount '+money(Math.abs(b.amt)/100)+')')+'.'); }
+      { const near=bn.filter(b=>Math.sign(b.amt)===sg&&!bUsed(b)&&b.amt!==k.amt&&Math.abs(Math.abs(b.amt)-a)<=lim(a)).sort((x,y)=>Math.abs(Math.abs(x.amt)-a)-Math.abs(Math.abs(y.amt)-a)); if(near.length) r.push('Nearest unmatched bank line within the keying tolerance: row '+near[0].srow+' of '+money(Math.abs(near[0].amt)/100)+' on '+fmtD(near[0].date)+' (differs by '+money(Math.abs(Math.abs(near[0].amt)-a)/100)+').'); }
+      { const opp=(kAmt.get(a)||[]).filter(x=>x!==k&&Math.sign(x.amt)!==sg); const oppB=(bAmt.get(a)||[]).filter(b=>Math.sign(b.amt)!==sg); if(opp.length) r.push('An equal and opposite Books entry exists (row '+rowsOf(opp,x=>x.srow)+').'); if(oppB.length) r.push('An equal and opposite bank line exists (row '+rowsOf(oppB,b=>b.srow)+').'); }
+      return 'Searched the whole period for this amount, for bank lines that add up to it, for the amount and the reference inside narrations, for a near miss and for an equal and opposite entry. '+joinRes(r); };
+    return {forBank,forBook}; })();
   // real issue text
   const issue=d=>{ const c=d.cat,k=d.kind;
     if(d.swap) return (c==='Absolute match'?'None. ':'')+d.swap;
@@ -1640,7 +1774,7 @@ function run(bankIn,booksIn,master,S,progress){
       else if(/^REV/i.test(vc)) r='Books reversal entry: a receipt or payment was cancelled in Books (for example a returned cheque). The bank statement shows no return line of this amount, so check whether the original cheque was ever deposited.';
       else if(d.krec) r=(d.kdate>=hi-7?'Receipt booked in the last days of the statement period; it may be credited by the bank after the statement ends.':'Receipt in Books with no credit of this amount on the bank statement. Usual causes: a cheque held and not yet deposited, a cheque deposited but not yet cleared, or the money was received in another bank account.');
       else r='Payment in Books with no debit of this amount on the bank statement. Usual causes: a cheque issued but not yet presented, or the payment was made from another bank account.';
-      return pre+r; }
+      return pre+r+((d.bpart&&d.bpart.length)||!d._k?'':' '+SEARCH.forBook(d._k)); }
     if(k==='none'){ const nr=String(d.narr||''); const amt=d.wd||d.dp; let r;
       if(/CGST|SGST|IGST|CHG|CHARGE|CHQ RTN|OUTWARD CHQ|FEE\b/i.test(nr)&&(d.wd||0)<5000) r='Bank charge, or tax on a bank charge. The bank debits these on its own and Books usually has no entry. Record them in Books if the company books bank charges.';
       else if(/DTAX|CBDT|GIB\/|GST\/|DIRECT TAX|CHALLAN|TDS/i.test(nr)) r='Tax paid through the bank (challan). Books has no entry of this amount near this date. Record the tax payment in Books or check that it was booked under another bank account.';
@@ -1649,7 +1783,7 @@ function run(bankIn,booksIn,master,S,progress){
       else if(/REJECT|RTN|RETURN|REVERSAL/i.test(nr)) r='Returned or rejected item. The original line it reverses could not be found, and Books has no entry for it.';
       else if(d.wd) r='Money left the bank but Books has no payment of ' + money(amt) + ' near this date. Check whether it was booked under another date or another bank account, or not booked at all.';
       else r='Money came into the bank but Books has no receipt of ' + money(amt) + ' near this date. Check whether it was booked under another date or another bank account, or not booked at all.';
-      return (d.xref?d.xref+'. ':'')+r+(d.hint&&/^Money /.test(r)?' '+d.hint.trim()+'.':''); }
+      return (d.xref?d.xref+'. ':'')+r+(d.hint&&/^Money /.test(r)?' '+d.hint.trim()+'.':'')+' '+SEARCH.forBank(bn[d.i]); }
     if(k==='rev'){ const thisCr=d.dp!=null; const early=d.bdate<d.pdate||(d.bdate===d.pdate&&thisCr); const oCr=early?thisCr:!thisCr, oDate=early?d.bdate:d.pdate, rDate=early?d.pdate:d.bdate, oRow=early?d.brow:d.prow, rRow=early?d.prow:d.brow, rNarr=String((early?d.pnarr:d.narr)||'').replace(/\s+/g,' ').trim().slice(0,70), oNarr=String((early?d.narr:d.pnarr)||'');
       const days=Math.abs(rDate-oDate); const what=oCr?(/CHQ|CLG|CTS|CHEQUE/i.test(oNarr)?'This looks like a cheque deposit that was returned.':'This looks like a receipt that was reversed.'):'This looks like a payment that was reversed or refunded.';
       return 'Reversal pair '+d.grp+': the bank '+(oCr?'credited':'debited')+' '+money(d.wd||d.dp)+' on '+fmtD(oDate)+' (Bank row '+oRow+') and '+(oCr?'debited':'credited')+' the same amount on '+fmtD(rDate)+' (Bank row '+rRow+')'+(days?', '+days+' day(s) later':', the same day')+'. The two lines cancel each other. '+what+' Second line on the bank: "'+rNarr+'". Books has no entry for either line, so there is nothing to match.'; }
@@ -1707,18 +1841,18 @@ const DB={db:null,
   del(st,k){ return this.tx(st,'readwrite',o=>o.delete(k)); },
   filesOf(pid){ return new Promise((res,rej)=>{ const q=this.db.transaction('files').objectStore('files').index('p').getAll(pid); q.onsuccess=()=>res(q.result); q.onerror=()=>rej(q.error); }); }
 };
-const DEFAULTS={entity:'',account:'',dayFirst:true,dateWin:3,tol:0.02,mismatchLimit:100,vendorRe:'^P\\d+$',customerRe:'^\\d{5,6}$',suspense:'SUS,000000',generic:RE.GEN_DEFAULT,bookSign:'pos-in',acctKey:'',bookAcctKey:''};
+const DEFAULTS={entity:'',account:'',dayFirst:true,dateWin:3,tol:0.02,mismatchLimit:100,vendorRe:'^P\\d+$',customerRe:'^\\d{5,6}$',suspense:'SUS,000000',generic:RE.GEN_DEFAULT,bookSign:'auto',farMatch:true,revWin:365,bulkWin:30,acctKey:'',bookAcctKey:''};
 let state={projects:[],pid:null,proj:null,files:[],results:null,step:'files',filter:'All',q:'',page:0,sel:null};
 
 /* ---------- field definitions ---------- */
 const FIELDS={
  bank:[{k:'date',l:'Transaction date',req:1,h:'Date the bank posted the line. Not the value date.'},{k:'narr',l:'Narration / description',req:1,h:'Text describing the line (NEFT, UPI, cheque, party name).'},{k:'ref',l:'Reference / cheque no.',h:'UTR, cheque number or bank reference. Used to match with the bank book.'},{k:'wd',l:'Withdrawal (debit)',h:'Money paid out of the bank.',mode:'split'},{k:'dp',l:'Deposit (credit)',h:'Money received in the bank.',mode:'split'},{k:'amt',l:'Amount',h:'One column holding the amount (with a Dr / Cr flag, or signed).',mode:'single'},{k:'drcr',l:'Dr / Cr flag',h:'Column saying D or C (or Debit / Credit) for each line.',mode:'single'},{k:'bal',l:'Closing / running balance',h:'Balance after each line. Strongly recommended: it proves nothing is missing.'}],
- books:[{k:'bacct',l:'Bank account (only if this book covers more than one bank)',h:'Text or code that tells one bank account apart from another in this book, for example an account number, account name or bank code column. Leave unmapped if this book is for one account only.'},{k:'date',l:'Voucher date',req:1,h:'Date of the bank book entry.'},{k:'party',l:'Party / ledger name',req:1,h:'Name of the vendor, customer or ledger on the entry.'},{k:'code',l:'Party / vendor code',h:'Code of the party. Used to check against the Vendor master.'},{k:'vch',l:'Voucher no.',h:'Voucher or document number.'},{k:'chq',l:'Cheque / reference no.',h:'Cheque number or UTR written on the entry. Used to match with the bank statement.'},{k:'ref2',l:'Second reference (remark / UTR)',h:'Another place a UTR may be written, such as Remarks.'},{k:'amt',l:'Amount',h:'One signed amount column.',mode:'single'},{k:'debit',l:'Debit',h:'Receipts into the bank (debit side of the bank book).',mode:'split'},{k:'credit',l:'Credit',h:'Payments out of the bank (credit side of the bank book).',mode:'split'}],
+ books:[{k:'bacct',l:'Bank account (only if this book covers more than one bank)',h:'Text or code that tells one bank account apart from another in this book, for example an account number, account name or bank code column. Leave unmapped if this book is for one account only.'},{k:'date',l:'Voucher date',req:1,h:'Date of the bank book entry.'},{k:'party',l:'Party / ledger name',req:1,h:'Name of the vendor, customer or ledger on the entry.'},{k:'code',l:'Party / vendor code',h:'Code of the party. Used to check against the Vendor master.'},{k:'vch',l:'Voucher no.',h:'Voucher or document number.'},{k:'chq',l:'Cheque / reference no.',h:'Cheque number or UTR written on the entry. Used to match with the bank statement.'},{k:'ref2',l:'Second reference (remark / UTR)',h:'Another place a UTR may be written, such as Remarks.'},{k:'bal',l:'Running balance',h:'Balance after each entry, if the book has one. Used to prove the book entry by entry and to compare month-end balances with the bank.'},{k:'amt',l:'Amount',h:'One signed amount column.',mode:'single'},{k:'debit',l:'Debit',h:'Receipts into the bank (debit side of the bank book).',mode:'split'},{k:'credit',l:'Credit',h:'Payments out of the bank (credit side of the bank book).',mode:'split'}],
  master:[{k:'code',l:'Vendor code',req:1,h:'Unique code of the vendor.'},{k:'name',l:'Vendor name',req:1,h:'Registered name of the vendor.'}]
 };
 const SYN={
  bank:{date:[/^(txn|transaction|posting|tran|trans)\.?\s*date$/i,/^date$/i,/tran.*date|txn.*date|transaction.*date/i],narr:[/narration/i,/description/i,/particular/i,/details/i,/remark/i],ref:[/chq|cheque|ref|utr|instrument/i],wd:[/withdraw|debit|paid out|dr amt|^dr\.?$/i,/^payments?$/i],dp:[/deposit|credit|paid in|cr amt|^cr\.?$/i,/^receipts?$/i],amt:[/^amount/i,/^(txn|transaction|tran)\s*amount/i,/amount/i],drcr:[/dr\s*\/\s*cr|cr\s*\/\s*dr|(debit|credit)\s*\/\s*(credit|debit)|^type$|indicator|^dr.?cr/i],bal:[/closing\s*bal|running\s*bal|^balance|available\s*bal|^bal(ance)?\b/i]},
- books:{bacct:[/bank\s*(a\/?c|account)/i,/account\s*name/i,/^a\/?c\s*(no\.?|code)$/i,/account\s*(no\.?|number|code)/i,/corresponding[\s\S]*main[\s\S]*account/i],date:[/^date$/i,/voucher date|vch date|trans.*date|^compute_\d+$/i,/date/i],party:[/(vendor|customer|supplier|party|ledger|c_)[ _/.-]*(\/ ?)?(customer |vendor )?name/i,/^(party|ledger|vendor|customer|supplier|particulars?)$/i,/party|ledger|c_name|^name$|particular|customer|supplier|vendor/i,/narration/i],code:[/opp.*code/i,/vendor code|party code|supp.*code|contra|customer code/i,/code/i],vch:[/(voucher|vch|doc(ument)?)\s*(no|num|number|#)/i,/tran.?no/i,/voucher|vch|doc.?no/i],chq:[/chq|cheque|instrument/i,/ref/i],ref2:[/remark|utr|ref.*2|narr/i],amt:[/amount|amt/i],debit:[/^debit|^dr\b|receipt/i],credit:[/^credit|^cr\b|payment/i]},
+ books:{bal:[/running\s*bal/i,/^balance$/i,/closing\s*bal/i],bacct:[/bank\s*(a\/?c|account)/i,/account\s*name/i,/^a\/?c\s*(no\.?|code)$/i,/account\s*(no\.?|number|code)/i,/corresponding[\s\S]*main[\s\S]*account/i],date:[/^date$/i,/voucher date|vch date|trans.*date|^compute_\d+$/i,/date/i],party:[/(vendor|customer|supplier|party|ledger|c_)[ _/.-]*(\/ ?)?(customer |vendor )?name/i,/^(party|ledger|vendor|customer|supplier|particulars?)$/i,/party|ledger|c_name|^name$|particular|customer|supplier|vendor/i,/narration/i],code:[/opp.*code/i,/vendor code|party code|supp.*code|contra|customer code/i,/code/i],vch:[/(voucher|vch|doc(ument)?)\s*(no|num|number|#)/i,/tran.?no/i,/voucher|vch|doc.?no/i],chq:[/chq|cheque|instrument/i,/ref/i],ref2:[/remark|utr|ref.*2|narr/i],amt:[/amount|amt/i],debit:[/^debit|^dr\b|receipt/i],credit:[/^credit|^cr\b|payment/i]},
  master:{code:[/code|id$/i],name:[/name|party|description/i]}
 };
 const ROLE_NAME={bank:'Bank statement',books:'Bank book',master:'Vendor master'};
@@ -1752,10 +1886,40 @@ function automap(f){
   if(f.role==='bank'&&map.wd!=null&&map.dp!=null&&map.wd===map.dp) delete map.dp;
   // filter suggestion (books/bank): account code column with several values
   f.filter=null;
-  if(f.role==='books'){ const ci=hd.findIndex(h=>/act.?code|account.?code|bank.?code|a\/c.?code|acct/i.test(h)&&!/opp/i.test(h)); if(ci>=0){ const vals=colValues(f,ci); if(vals.length>1) f.filter={col:ci,val:vals[0].v}; else if(vals.length===1) f.filter=null; } }
+  if(f.role==='books'){ const ci=hd.findIndex(h=>/act.?code|account.?code|bank.?code|a\/c.?code|acct/i.test(h)&&!/opp/i.test(h)); if(ci>=0){ const vals=colValues(f,ci); if(vals.length>1) f.filter={col:ci,val:AUTO_FILTER,fallback:vals[0].v}; else if(vals.length===1) f.filter=null; } }
   f.map=map; return f;
 }
 function colValues(f,ci){ const rows=f.sheets[f.sheetIdx].rows; const c=new Map(); for(let i=f.headerRow;i<rows.length;i++){ const v=(rows[i]||[])[ci]; if(v==null||v==='') continue; const k=String(v); c.set(k,(c.get(k)||0)+1); } return [...c].map(([v,n])=>({v,n})).sort((a,b)=>b.n-a.n); }
+// Many bank books mix more than one bank account in one sheet (one account-code column, several codes).
+// '__AUTO__' means: work out which code belongs to the statement account being reconciled right now, instead of
+// freezing on one code for every account. The account's own number usually appears, literally, somewhere on its
+// own rows (e.g. a ledger-name column reading "HDFC BANK -CA- 99969845796666"), so that is what is matched on.
+const AUTO_FILTER='__AUTO__';
+// the bank statement account currently being reconciled (S.acctKey), as its full number - read only from bank-role
+// files, which never depend on a books file's own filter, so this cannot recurse back into the file being resolved
+function activeAccountNumber(S){
+  const key=S&&S.acctKey; if(!key) return null;
+  for(const f of state.files){ if(f.role!=='bank'||!mapped(f)) continue; let a; try{ a=analyse(f,S); }catch(e){ continue; } if(a&&a.pf&&a.pf.key===key&&a.pf.account) return a.pf.account; }
+  return null;
+}
+// which value of f.filter.col belongs to the active statement account. A counterparty / ledger name column is no
+// good on its own: on a transfer between two of the book's own accounts, one account's row names the other, so
+// a plain text search hits both. Instead, for each candidate code, only a column whose text is the SAME on every
+// row carrying that code is trusted as that code's own identity (a counterparty name varies row to row; this does
+// not) - and that constant text is checked for the active account's own number. Returns null, so the caller falls
+// back to the saved default, when this cannot be told apart.
+function autoFilterVal(f,S){
+  const col=f.filter.col; const acct=activeAccountNumber(S); if(!acct) return null;
+  const digits=String(acct).replace(/\D/g,''); if(digits.length<4) return null;
+  const tail=digits.length>6?digits.slice(-6):digits;
+  const rows=f.sheets[f.sheetIdx].rows; const byCode=new Map();
+  for(let i=f.headerRow;i<rows.length;i++){ const r=rows[i]||[]; const code=r[col]; if(code==null||code==='') continue; const key=String(code);
+    let cm=byCode.get(key); if(!cm){ cm=new Map(); byCode.set(key,cm); }
+    for(let c=0;c<r.length;c++){ if(c===col||r[c]==null||r[c]==='') continue; let s=cm.get(c); if(!s){ s=new Set(); cm.set(c,s); } if(s.size<2) s.add(String(r[c])); } }
+  const hit=new Set();
+  for(const [key,cm] of byCode){ for(const s of cm.values()){ if(s.size===1&&[...s][0].replace(/\D/g,'').includes(tail)){ hit.add(key); break; } } }
+  return hit.size===1?[...hit][0]:null;
+}
 function missingFields(f){ const m=f.map||{}; const miss=[]; for(const fld of FIELDS[f.role]) if(fld.req&&m[fld.k]==null) miss.push(fld.l);
   if(f.role==='bank'&&m.wd==null&&m.dp==null&&m.amt==null) miss.push('Withdrawal and Deposit, or a single Amount');
   if(f.role==='books'&&m.amt==null&&m.debit==null&&m.credit==null) miss.push('Amount, or Debit and Credit'); return miss; }
@@ -1771,9 +1935,13 @@ function extract(f,S){
   const hdrCells=rows[f.headerRow-1]||[]; const hdrT=c=>c==null||hdrCells[c]==null?'':String(hdrCells[c]).trim().toLowerCase(); let afterRepeat=false; const seenKeys=new Set(); info.repeatN=0;
   const lineKey=(date,narr,amt,ref)=>date+'|'+String(narr==null?'':narr).replace(/\s+/g,' ').trim().slice(0,30).toLowerCase()+'|'+amt+'|'+String(ref==null?'':ref).trim();
   if(f.role==='bank'&&m.wd!=null){ let neg=0,tot=0; for(let i=f.headerRow;i<rows.length&&tot<400;i++){ const r=rows[i]||[]; if(toDay(r[m.date],S.dayFirst)==null) continue; const w=toNum(r[m.wd]); if(w!=null&&w!==0){ tot++; if(w<0) neg++; } } wdNeg=tot>=3&&neg>=0.5*tot; }
+  let fval=null,autoOk=null;
+  if(f.filter&&f.filter.col!=null){ if(f.filter.val!==AUTO_FILTER) fval=f.filter.val; else { const auto=autoFilterVal(f,S); autoOk=auto!=null; fval=auto!=null?auto:(f.filter.fallback!=null?f.filter.fallback:null); } }
+  info.filterVal=fval; info.filterAuto=!!(f.filter&&f.filter.val===AUTO_FILTER); info.filterAutoFailed=info.filterAuto&&autoOk===false;
   for(let i=f.headerRow;i<rows.length;i++){ const r=rows[i]||[];
     if(!r.length||r.every(v=>v==null||v==='')){ info.blank++; continue; }
-    if(f.filter&&f.filter.col!=null&&f.filter.val!=null&&String(r[f.filter.col])!==String(f.filter.val)){ info.filtered++; continue; }
+    { const filled=r.filter(v=>v!=null&&v!==''); if(filled.length>=2&&filled.every(v=>/^[\s*=_\-.]+$/.test(String(v)))&&filled.filter(v=>/\*/.test(String(v))).length>=filled.length*0.5){ info.blank++; continue; } }
+    if(f.filter&&f.filter.col!=null&&fval!=null&&String(r[f.filter.col])!==String(fval)){ info.filtered++; continue; }
     const g=k=>m[k]==null?null:r[m[k]];
     if(f.role==='bank'&&out.length&&m.date!=null&&m.narr!=null){ const t1=r[m.date]==null?'':String(r[m.date]).trim().toLowerCase(), t2=r[m.narr]==null?'':String(r[m.narr]).trim().toLowerCase(); if(t1&&t1===hdrT(m.date)&&t2&&t2===hdrT(m.narr)){ afterRepeat=true; info.nonTxn++; skipped++; continue; } }
     if(f.role==='master'){ const c=g('code'); if(c==null||c===''){ info.nonTxn++; continue; } out.push({code:String(c).trim(),name:g('name')==null?'':String(g('name')).trim()}); continue; }
@@ -1793,8 +1961,8 @@ function extract(f,S){
       if(neg) info.neg++; info.lastData=i;
       { const kk=lineKey(date,text,amt,g('ref')); if(afterRepeat&&seenKeys.has(kk)){ info.repeatN++; info.nonTxn++; skipped++; continue; } if(!afterRepeat) seenKeys.add(kk); }
       out.push({date,narr:text==null?'':String(text),ref:g('ref'),amt,bal,neg,src:f.name,srow:i+1}); }
-    else { if(m.amt!=null){ const a=toNum(g('amt')); if(a==null){ unread(i,'A dated line with no amount',text); continue; } amt=S.bookSign==='pos-in'?a:-a; } else { const d=toNum(g('debit')),c=toNum(g('credit')); if(d==null&&c==null){ unread(i,'A dated line with no amount',text); continue; } amt=(d||0)-(c||0); if(S.bookSign!=='pos-in') amt=-amt; }
-      info.lastData=i; const bv=g('bacct'); out.push({date,vch:g('vch'),party:text==null?'':String(text),code:g('code'),chq:g('chq'),ref2:g('ref2'),amt,bacct:bv==null||bv===''?null:String(bv).trim(),src:f.name,srow:i+1}); }
+    else { if(m.amt!=null){ const a=toNum(g('amt')); if(a==null){ unread(i,'A dated line with no amount',text); continue; } amt=S.bookSign==='pos-out'?-a:a; } else { const d=toNum(g('debit')),c=toNum(g('credit')); if(d==null&&c==null){ unread(i,'A dated line with no amount',text); continue; } amt=(d||0)-(c||0); if(S.bookSign==='pos-out') amt=-amt; }
+      info.lastData=i; const bv=g('bacct'); out.push({date,vch:g('vch'),party:text==null?'':String(text),code:g('code'),chq:g('chq'),ref2:g('ref2'),amt,bal:m.bal!=null?toNum(g('bal')):null,bacct:bv==null||bv===''?null:String(bv).trim(),src:f.name,srow:i+1}); }
   }
   // rows with amounts that sit below the last transaction are statement footers (summary figures), not lost lines
   const keep=[]; for(const u of info.unreadable){ if(u.row-1>info.lastData){ info.unreadN--; info.nonTxn++; } else keep.push(u); } info.unreadable=keep;
@@ -1907,7 +2075,7 @@ function resolveProfile(f,p){ const hd=headersOf(f).map(normH); const map={};
   return map; }
 function applyProfile(f,p){ const hr0=f.headerRow; f.headerRow=p.headerRow||f.headerRow; const map=resolveProfile(f,p); if(!map){ f.headerRow=hr0; return false; }
   f.map=map; f.profile=p.name; if(p.amtMode) f.amtMode=p.amtMode; if(map.wd!=null||map.dp!=null) f.amtMode='split'; else if(map.amt!=null||map.debit==null&&map.credit==null) f.amtMode='single';
-  if(p.filterCol){ const ci=headersOf(f).map(normH).indexOf(normH(p.filterCol)); if(ci>=0){ const vals=colValues(f,ci); f.filter={col:ci,val:vals[0]?vals[0].v:null}; } }
+  if(p.filterCol){ const ci=headersOf(f).map(normH).indexOf(normH(p.filterCol)); if(ci>=0){ const vals=colValues(f,ci); f.filter=vals.length>1?{col:ci,val:AUTO_FILTER,fallback:vals[0].v}:{col:ci,val:vals[0]?vals[0].v:null}; } }
   return true; }
 function autoProfile(f){ const list=state.profiles.filter(p=>p.role===f.role).sort((a,b)=>b.created-a.created); for(const p of list){ if(p.fields&&Object.values(p.fields).every(d=>d.h)||true){ const snap=JSON.stringify([f.headerRow,f.map,f.filter]); if(applyProfile(f,p)){ /* header names must really exist to be trusted */ const hd=headersOf(f).map(normH); const named=Object.values(p.fields).filter(d=>d.h); const hit=named.filter(d=>hd.includes(normH(d.h))).length; if(named.length&&hit>=Math.ceil(named.length*0.8)) return p; const s=JSON.parse(snap); f.headerRow=s[0]; f.map=s[1]; f.filter=s[2]; f.profile=null; } } } return null; }
 
@@ -1998,20 +2166,26 @@ function rColumns(){
   const role=state.mapRole; const roles=['bank','books','master'];
   for(const r of roles) for(const g of layoutGroups(r)) if(g.length>1) syncGroup(g);
   const groups=layoutGroups(role); const nf=state.files.filter(f=>f.role===role).length;
-  const sum=groups.length?`<div class="card lsum"><div class="bd">
-   <div class="lsumh"><b>${groups.length} column layout${groups.length===1?'':'s'}</b> in your ${nf} ${ROLE_NAME[role].toLowerCase()} file${nf===1?'':'s'}</div>
-   <div class="lsumr">${groups.map((g,i)=>{ const need=missingFields(g[0]).length; return `<button class="lchip ${need?'need':''}" data-jump="${i}"><span class="n">${i+1}</span><span class="t"><b>Layout ${i+1}</b><span>${g.length} file${g.length===1?'':'s'} - ${need?'needs columns':'ready'}</span></span></button>`; }).join('')}</div>
-   <div class="small">Files whose column names match are grouped into one layout. Set the columns once for each layout below.</div>
+  // one layout needs no choosing - go straight to it. More than one: show the list and open just the one picked,
+  // instead of every layout's full column-mapping card stacked on the page at once (the same "pick one, see just
+  // that one" pattern used on the Reconciliation tab's account list).
+  state.colSel=state.colSel||{}; let sel=state.colSel[role]; if(sel!=null&&(sel<0||sel>=groups.length)) sel=null; if(sel==null&&groups.length===1) sel=0;
+  const sum=groups.length>1?`<div class="card lsum"><div class="bd">
+   <div class="lsumh"><b>${groups.length} column layouts</b> in your ${nf} ${ROLE_NAME[role].toLowerCase()} files</div>
+   <div class="lsumr">${groups.map((g,i)=>{ const need=missingFields(g[0]).length; return `<button class="lchip ${need?'need':''} ${sel===i?'on':''}" data-jump="${i}"><span class="n">${i+1}</span><span class="t"><b>Layout ${i+1}</b><span>${g.length} file${g.length===1?'':'s'} - ${need?'needs columns':'ready'}</span></span></button>`; }).join('')}</div>
+   <div class="small">Files whose column names match are grouped into one layout. Click one to set its columns.</div>
   </div></div>`:'';
+  const detail=!groups.length?`<div class="card"><div class="bd small">No ${ROLE_NAME[role].toLowerCase()} file yet. <button class="ghost" id="up">Upload files</button></div></div>`
+    :sel==null?''
+    :(groups.length>1?`<div class="row" style="margin-top:14px"><button class="ghost" id="backLayouts">&larr; All layouts</button></div>`:'')+`<div class="ldiv"><span>Layout ${sel+1} of ${groups.length}</span></div>`+layoutCard(groups[sel],sel,role);
   A.innerHTML=hero('Setup · Columns','Tell the tool where your','columns','are','The tool has made a first guess for each layout. Check the highlighted sheet, fix any column, and save the layout for next time.')+
-  `<div class="tabs" role="tablist">${roles.map(r=>{ const n=state.files.filter(f=>f.role===r).length,b=unmappedCount(r); return `<button data-role="${r}" class="${r===role?'on':''}" role="tab">${ROLE_NAME[r]} (${n})${n?(b?' - needs columns':' - ready'):''}</button>`; }).join('')}</div>`+sum+
-  (groups.length?groups.map((g,i)=>`<div class="ldiv"><span>Layout ${i+1} of ${groups.length}</span></div>`+layoutCard(g,i,role)).join(''):`<div class="card"><div class="bd small">No ${ROLE_NAME[role].toLowerCase()} file yet. <button class="ghost" id="up">Upload files</button></div></div>`)+
+  `<div class="tabs" role="tablist">${roles.map(r=>{ const n=state.files.filter(f=>f.role===r).length,b=unmappedCount(r); return `<button data-role="${r}" class="${r===role?'on':''}" role="tab">${ROLE_NAME[r]} (${n})${n?(b?' - needs columns':' - ready'):''}</button>`; }).join('')}</div>`+sum+detail+
   `<div class="row" style="margin-top:18px"><span class="sp"></span><button class="primary" id="gochk">Next: check the data</button></div>`;
   $$('[data-role]').forEach(b=>b.onclick=()=>{ state.mapRole=b.dataset.role; rColumns(); });
-  const sm=matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth';
-  $$('[data-jump]').forEach(b=>b.onclick=()=>{ const c=$(`.card[data-gi="${b.dataset.jump}"]`); if(!c) return; const mn=document.querySelector('main'); mn.scrollTo({top:mn.scrollTop+c.getBoundingClientRect().top-mn.getBoundingClientRect().top-10,behavior:sm}); });
+  $$('[data-jump]').forEach(b=>b.onclick=()=>{ state.colSel[role]=+b.dataset.jump; rColumns(); });
+  const back=$('#backLayouts'); if(back) back.onclick=()=>{ state.colSel[role]=null; rColumns(); };
   if($('#up')) $('#up').onclick=()=>setStep('upload'); $('#gochk').onclick=()=>setStep('check');
-  groups.forEach((g,i)=>wireLayout(g,i,role));
+  if(sel!=null) wireLayout(groups[sel],sel,role);
 }
 const HUES=[24,24,24,24,24,24,24,24,24,24,24,24];
 function rawPreview(f,role,n){ const rows=f.sheets[f.sheetIdx].rows; const hd=headersOf(f); const inv={}; const fl=FIELDS[role]; fl.forEach((x,i)=>{ const ci=f.map[x.k]; if(ci!=null){ (inv[ci]=inv[ci]||[]).push({x,i}); } });
@@ -2033,6 +2207,9 @@ function layoutCard(g,i,role){
     const st=ci==null?(x.req?'<span class="tag bad">Required</span>':'<span class="tag">Optional</span>'):(rate==null?'':`<span class="tag ${rate>=95?'ok':rate>=70?'warn':'bad'}">${rate}%</span>`);
     return `<div class="fld ${ci==null&&x.req?'need':''}" style="--h:${HUES[FIELDS[role].indexOf(x)%HUES.length]}" title="${esc(x.h||'')}"><div class="fl"><span class="dot"></span><b>${esc(x.l)}</b>${x.req?'<i>*</i>':''}<span class="sp"></span>${st}</div><select data-k="${x.k}" aria-label="${esc(x.l)}">${colOpts(f,ci)}</select><div class="fs">${smp.length?smp.map(s=>esc(s)).join(' &nbsp;|&nbsp; '):'&nbsp;'}</div></div>`; }).join('');
   const fc=f.filter?f.filter.col:null; const vals=fc!=null?colValues(f,fc).slice(0,80):[];
+  const autoOn=fc!=null&&f.filter.val===AUTO_FILTER;
+  let autoNote='';
+  if(autoOn){ const S0=S_(); const acct=activeAccountNumber(S0); if(!acct) autoNote='Pick an account on Run and review to see which row this picks for it.'; else { const got=autoFilterVal(f,S0); autoNote=got!=null?`For account ${acct}, this currently picks ${esc(got)}.`:`Could not tell which row is for account ${acct} (its number does not appear uniquely against one value), so ${esc(f.filter.fallback)} is used for every account until you choose one below.`; } }
   return `<div class="card lcard" data-gi="${i}">
   <div class="lhead"><span class="lno">${i+1}</span><span class="ltx"><b>Layout ${i+1}</b><span>${g.length} file${g.length===1?'':'s'} with the same column names</span></span><span class="sp"></span>${f.profile?`<span class="tag">Saved layout: ${esc(f.profile)}</span>`:''}<span class="tag ${miss.length?'bad':'ok'}">${miss.length?'Needs columns':'Ready'}</span></div>
   <details class="lfiles"><summary>${g.length===1?'1 file uses':g.length+' files use'} this layout</summary><div class="fchips">${names.map(n=>`<span title="${esc(n)}">${esc(n)}</span>`).join('')}</div></details>
@@ -2044,7 +2221,7 @@ function layoutCard(g,i,role){
    ${rawPreview(f,role,6)}
    <div class="lsec"><span class="n1">3</span><b>Choose the column for each standard column</b><span>Pick from your sheet's columns. Changes show in the sheet above.</span></div>
    <div class="flds">${fields}</div>
-   <details class="adv"><summary>Advanced: use only some rows of the sheet</summary><div class="row"><label class="f">Use only rows where column<select data-fc="1">${colOpts(f,fc).replace('(not in this file)','(use all rows)')}</select></label>${fc!=null?`<label class="f">equals<select data-fv="1">${vals.map(v=>`<option value="${esc(v.v)}" ${f.filter&&String(f.filter.val)===v.v?'selected':''}>${esc(v.v)} (${v.n.toLocaleString()} rows)</option>`).join('')}</select></label>`:''}</div><div class="small">Use this when one sheet holds several bank accounts or branches, for example an account code column.</div></details>
+   <details class="adv" ${autoOn?'open':''}><summary>Advanced: use only some rows of the sheet</summary><div class="row"><label class="f">Use only rows where column<select data-fc="1">${colOpts(f,fc).replace('(not in this file)','(use all rows)')}</select></label>${fc!=null?`<label class="f">equals<select data-fv="1">${vals.length>1?`<option value="${AUTO_FILTER}" ${autoOn?'selected':''}>Automatic - matched to the statement account</option>`:''}${vals.map(v=>`<option value="${esc(v.v)}" ${!autoOn&&f.filter&&String(f.filter.val)===v.v?'selected':''}>${esc(v.v)} (${v.n.toLocaleString()} rows)</option>`).join('')}</select></label>`:''}</div>${autoOn?`<div class="small">${autoNote}</div>`:''}<div class="small">Use this when one sheet holds several bank accounts or branches, for example an account code column. "Automatic" works out the right row for each account itself, from that account's own number written somewhere against its own rows.</div></details>
   </div>
   <div class="lfoot"><span class="lno sm">4</span><label class="f inline">Save this layout as<input type="text" data-pn="1" placeholder="For example: Client A - HDFC statement" style="width:250px"></label><button data-save="1">Save layout</button><span class="small">A file with the same column names is then mapped automatically next time.</span></div></div>`;
 }
@@ -2054,7 +2231,7 @@ function wireLayout(g,i,role){
   $('[data-hr]',root).onchange=async e=>{ f.headerRow=Math.max(1,+e.target.value||1); for(const x of g){ x.headerRow=f.headerRow; } automap(f); f.profile=null; f.amtMode=null; await redo(); };
   const sh=$('[data-sheet]',root); if(sh) sh.onchange=async()=>{ for(const x of g){ x.sheetIdx=+sh.value; x.headerRow=headerRowGuess(x.sheets[x.sheetIdx].rows,x.role); } automap(f); f.profile=null; f.amtMode=null; await redo(); };
   $$('[data-am]',root).forEach(r=>r.onchange=async()=>{ f.amtMode=r.dataset.am; if(f.amtMode==='single'){ delete f.map.wd; delete f.map.dp; delete f.map.debit; delete f.map.credit; } else { delete f.map.amt; delete f.map.drcr; } const hd=headersOf(f); for(const fld of FIELDS[role]){ if(fld.mode===f.amtMode&&f.map[fld.k]==null){ const used=new Set(Object.values(f.map)); const re=(SYN[role][fld.k]||[]).find(rx=>hd.some((h,ix)=>h&&rx.test(h)&&!used.has(ix))); if(re){ const ix=hd.findIndex((h,ix)=>h&&re.test(h)&&!used.has(ix)); if(ix>=0) f.map[fld.k]=ix; } } } f.profile=null; await redo(); });
-  const fc=$('[data-fc]',root); fc.onchange=async()=>{ if(fc.value==='') f.filter=null; else { const vals=colValues(f,+fc.value); f.filter={col:+fc.value,val:vals[0]?vals[0].v:null}; } await redo(); };
+  const fc=$('[data-fc]',root); fc.onchange=async()=>{ if(fc.value==='') f.filter=null; else { const vals=colValues(f,+fc.value); f.filter=vals.length>1?{col:+fc.value,val:AUTO_FILTER,fallback:vals[0].v}:{col:+fc.value,val:vals[0]?vals[0].v:null}; } await redo(); };
   const fv=$('[data-fv]',root); if(fv) fv.onchange=async()=>{ f.filter.val=fv.value; await redo(); };
   $('[data-prof]',root).onchange=async e=>{ const p=state.profiles.find(x=>x.id===e.target.value); if(!p) return; if(!applyProfile(f,p)){ toast('This saved layout does not fit the file: a required column name was not found.','bad'); return; } await redo(); };
   $('[data-save]',root).onclick=async()=>{ const nm=$('[data-pn]',root).value.trim(); if(!nm){ toast('Type a name for the layout first.','bad'); return; } if(missingFields(f).length){ toast('Map the required columns first.','bad'); return; } state.profiles=state.profiles.filter(p=>!(p.role===role&&p.name.toLowerCase()===nm.toLowerCase())); state.profiles.push(profileFromFile(f,nm)); await saveProfiles(); f.profile=nm; await redo(); toast('Layout saved: '+nm,'ok'); };
@@ -2118,7 +2295,7 @@ function rSettings(){
   A.innerHTML=hero('Reconcile · Settings','Matching rules, saved','layouts','and standard columns','The defaults follow the method already used. Change only what your data needs.')+
   `<div class="grid g2">
   <div class="card"><div class="hd"><h3>Report heading</h3></div><div class="bd"><div class="row" style="margin-top:0"><label class="f">Client or entity name<input type="text" data-s="entity" value="${esc(s.entity)}" placeholder="Shown on each sheet" style="width:260px"></label><label class="f">Account or period line<input type="text" data-s="account" value="${esc(s.account)}" placeholder="Shown under the name" style="width:260px"></label></div><div class="small">If you write the bank account number here, the Data check selects that account automatically.</div></div></div>
-  <div class="card"><div class="hd"><h3>Dates and amounts</h3></div><div class="bd"><div class="row" style="margin-top:0"><label class="f inline"><input type="checkbox" data-s="dayFirst" ${s.dayFirst?'checked':''}> Dates are written day / month / year</label></div><div class="row"><label class="f">Date window for loose matching (days)<input type="number" data-s="dateWin" value="${s.dateWin}" min="0" max="10" style="width:90px"></label><label class="f">Small amount tolerance (Rs)<input type="number" step="0.01" data-s="tol" value="${s.tol}" style="width:90px"></label><label class="f">Largest amount gap still paired (Rs)<input type="number" data-s="mismatchLimit" value="${s.mismatchLimit}" style="width:110px"></label></div><div class="row"><label class="f">In the bank book, a positive amount (or a debit) means<select data-s="bookSign"><option value="pos-in" ${s.bookSign==='pos-in'?'selected':''}>money received in the bank</option><option value="pos-out" ${s.bookSign==='pos-out'?'selected':''}>money paid out of the bank</option></select></label></div></div></div>
+  <div class="card"><div class="hd"><h3>Dates and amounts</h3></div><div class="bd"><div class="row" style="margin-top:0"><label class="f inline"><input type="checkbox" data-s="dayFirst" ${s.dayFirst?'checked':''}> Dates are written day / month / year</label></div><div class="row"><label class="f">Date window for loose matching (days)<input type="number" data-s="dateWin" value="${s.dateWin}" min="0" max="10" style="width:90px"></label><label class="f">Small amount tolerance (Rs)<input type="number" step="0.01" data-s="tol" value="${s.tol}" style="width:90px"></label><label class="f">Largest amount gap still paired (Rs)<input type="number" data-s="mismatchLimit" value="${s.mismatchLimit}" style="width:110px"></label></div><div class="row"><label class="f">In the bank book, a positive amount (or a debit) means<select data-s="bookSign"><option value="auto" ${s.bookSign==='auto'?'selected':''}>worked out from the data (recommended)</option><option value="pos-in" ${s.bookSign==='pos-in'?'selected':''}>money received in the bank</option><option value="pos-out" ${s.bookSign==='pos-out'?'selected':''}>money paid out of the bank</option></select></label></div><div class="small">The tool checks the sign against the statement and states what it found on the Data check page.</div><div class="row"><label class="f">Bulk and vendor group window (days)<input type="number" data-s="bulkWin" value="${s.bulkWin==null?30:s.bulkWin}" min="0" max="120" style="width:90px"></label><label class="f">Reversal window (days)<input type="number" data-s="revWin" value="${s.revWin==null?365:s.revWin}" min="1" max="1000" style="width:90px"></label><label class="f inline"><input type="checkbox" data-s="farMatch" ${s.farMatch!==false?'checked':''}> Match the same amount even when the dates are far apart (shown as a date difference)</label></div></div></div>
   <div class="card"><div class="hd"><h3>Vendor and customer codes</h3></div><div class="bd"><div class="row" style="margin-top:0"><label class="f">Vendor codes look like (pattern)<input type="text" data-s="vendorRe" value="${esc(s.vendorRe)}"></label><label class="f">Customer codes look like (pattern)<input type="text" data-s="customerRe" value="${esc(s.customerRe)}"></label><label class="f">Suspense codes (comma separated)<input type="text" data-s="suspense" value="${esc(s.suspense)}"></label></div><div class="small">A code in the Vendor master is a vendor. A customer code is accepted without a master. A code that looks like neither is a ledger or transfer entry. A blank or suspense code is reported as "Vendor name/code missing".</div></div></div>
   <div class="card wide"><div class="hd"><h3>Words ignored when comparing names</h3></div><div class="bd"><textarea data-s="generic" rows="6" style="width:100%">${esc(s.generic)}</textarea><div class="small">Common words such as Medical, Pharma, Stores do not count as proof that two names are the same.</div><div class="row"><button id="rst">Restore all defaults</button></div></div></div></div>
   <div class="card"><div class="hd"><h3>Saved layouts</h3><span class="small">A layout remembers which column holds what. Files with the same column names are mapped automatically.</span></div><div class="bd">
@@ -2139,9 +2316,9 @@ function rSettings(){
 }
 
 /* ---------- Run and review ---------- */
-const HOWMAP=[[/^P1 /,'Reference and amount','High','The reference in the bank book equals the bank reference, and the amount agrees.'],[/^P1b/,'Partial reference and amount','High','Part of the reference agrees, and the amount agrees.'],[/^P2/,'Date and amount','Medium','No reference. One entry has the same date and amount (the name chooses between several).'],[/^Re-presented/,'Re-presented cheque','Medium','Cheque paid, returned and paid again: the Books entry belongs to the later cheque.'],[/^Allocated/,'Allocated from a day total','Medium','Several lines of one day allocated by name and unique amount combination.'],[/^P3/,'Amount within a few days','Low','Same amount within the date window, unique on both sides. Review.'],[/^Tolerance/,'Small amount difference','Low','Amount differs by the small tolerance. Review.'],[/^Same date/,'Same date, different amount','Low','Same date and similar name, amount differs. Review.']];
-function methodOf(d){ if(d.kind==='single'&&d.how){ for(const h of HOWMAP) if(h[0].test(d.how)) return h[1]; return d.how; } if(d.kind==='bulk') return 'One bank line to several entries'; if(d.kind==='agg') return 'Several bank lines to one entry'; if(d.kind==='rev') return 'Reversal pair on the bank'; if(d.kind==='bkonly') return 'Bank book entry with no bank line'; if(d.kind==='none'||d.cat==='Mismatch') return 'Not matched'; return 'Other'; }
-function confOf(m){ for(const h of HOWMAP) if(h[1]===m) return [h[2],h[3]]; if(/several|one bank/i.test(m)) return ['Medium','Totals of the group agree.']; if(/Not matched|no bank line|Reversal/.test(m)) return ['-','Listed as a mismatch for review.']; return ['-','']; }
+const HOWMAP=[[/^P1 /,'Reference and amount','High','The reference in the bank book equals the bank reference, and the amount agrees.'],[/^P1b/,'Partial reference and amount','High','Part of the reference agrees, and the amount agrees.'],[/^P2/,'Date and amount','Medium','No reference. One entry has the same date and amount (the name chooses between several).'],[/^Re-presented/,'Re-presented cheque','Medium','Cheque paid, returned and paid again: the Books entry belongs to the later cheque.'],[/^Allocated/,'Allocated from a day total','Medium','Several lines of one day allocated by name and unique amount combination.'],[/^P3/,'Amount within a few days','Low','Same amount within the date window, unique on both sides. Review.'],[/^Tolerance/,'Small amount difference','Low','Amount differs by the small tolerance. Review.'],[/^Same date/,'Same date, different amount','Low','Same date and similar name, amount differs. Review.'],[/^P4/,'Same amount, dates far apart','Low','The same amount, unique on both sides, dated further apart than the window. Check the timing.']];
+function methodOf(d){ if(d.kind==='single'&&d.how){ for(const h of HOWMAP) if(h[0].test(d.how)) return h[1]; return d.how; } if((d.kind==='bulk'||d.kind==='agg')&&/^(Same day total|Amounts written|One entry covers|One payment, entries dated)/.test(d.method||'')) return d.method; if(d.kind==='bulk') return 'One bank line to several entries'; if(d.kind==='agg') return 'Several bank lines to one entry'; if(d.kind==='rev') return 'Reversal pair on the bank'; if(d.kind==='bkonly') return 'Bank book entry with no bank line'; if(d.kind==='none'||d.cat==='Mismatch') return 'Not matched'; return 'Other'; }
+function confOf(m){ for(const h of HOWMAP) if(h[1]===m) return [h[2],h[3]]; if(/^One payment, entries dated/.test(m)) return ['Medium','The combination of unmatched entries, closest in date, that adds up exactly and is clearly the best; at least one entry is close to the bank date.']; if(/^Same day total/.test(m)) return ['Low','The total of the day agrees on both sides. The lines were not traced one by one. Review.']; if(/^Amounts written/.test(m)) return ['High','Each amount written in the Books narration is a separate bank line, and they add up to the entry exactly.']; if(/^One entry covers/.test(m)) return ['High','The narration states the unit amount and the number of times, and that many bank lines of that amount exist.']; if(/several|one bank/i.test(m)) return ['Medium','Totals of the group agree.']; if(/Not matched|no bank line|Reversal/.test(m)) return ['-','Listed as a mismatch for review.']; return ['-','']; }
 async function delAllResults(pid){ await DB.del('results',pid); for(const r of (await DB.all('results'))||[]){ if(r&&String(r.projectId).startsWith(pid+'#')) await DB.del('results',r.projectId); } }
 async function switchAcct(key){ const S=S_(); S.acctKey=key; S.bookAcctKey=''; await saveProject(); const r=await DB.get('results',state.pid+'#'+key);
   if(r){ state.results=Object.assign({},r,{projectId:state.pid}); await DB.put('results',state.results); } else { state.results=null; await DB.del('results',state.pid); }
@@ -2258,6 +2435,26 @@ function runSelfTest(){
     const sb=IN.verify([{date:1,amt:-5,bal:95,srow:1},{date:2,amt:10,bal:105,srow:2},{date:4,amt:-5,bal:95,srow:4}],{opening:100,closing:95});
     T('Balance proof rejects a statement with a missing line',sb.breaks>0&&sb.netOK===false);
     T('Dates and amounts are read in common formats',IN.toDay('05/04/2026',true)===IN.toDay('2026-04-05',true)&&IN.toDay('5-Apr-26',true)===IN.toDay('2026-04-05',true)&&IN.toNum('1,23,456.50 Dr')===-123456.5&&IN.toNum('(500.00)')===-500);
+  { /* rules of the matching notes */
+  const run2=(bank,bk,S)=>RE.run(bank.map((b,i)=>({date:b[0],narr:b[1],ref:b[2]||'',amt:b[3],src:'bank',srow:i+10})),bk.map((b,i)=>({date:b[0],vch:b[1],party:b[2],code:b[3]||'',chq:b[4]||'',ref2:b[5]||'',amt:b[6],src:'books',srow:i+2})),new Map(),Object.assign({dateWin:3,tol:0.02,mismatchLimit:100,noMaster:true},S||{}),()=>{});
+  const cat2=(res,r)=>{ const d=res.recs.find(x=>x.brow===r); return d?d.cat:'(missing)'; };
+  { const res=run2([[D(2026,4,2),'CASH DEPOSIT','',2361.00],[D(2026,4,5),'CASH DEPOSIT','',149.66],[D(2026,4,9),'CASH DEPOSIT','',30.00],[D(2026,4,12),'CASH DEPOSIT','',323.80]],[[D(2026,4,12),'RV1','CASH','','','CASH DEPOSIT (2361+149.66+30+323.80)',2864.46]]);
+    T('Narration components: four bank lines named in one Books narration',[10,11,12,13].every(r=>cat2(res,r)==='Mapped - Bulk Entries'),[10,11,12,13].map(r=>cat2(res,r)).join(' | ')); T('Narration components: nothing left over',res.recs.filter(d=>d.kind==='bkonly').length===0); }
+  { const res=run2([[D(2026,4,2),'CASH DEPOSIT','',236100],[D(2026,4,5),'CASH DEPOSIT','',14966],[D(2026,4,9),'CASH DEPOSIT','',3000],[D(2026,4,12),'CASH DEPOSIT','',32380]],[[D(2026,4,12),'RV1','CASH','','','CASH DEPOSIT (236100+1496+3000+32380)',286446]]);
+    const d=res.recs.find(x=>x.brow===11); T('Typed note: 1496 in the narration, 14966 at the bank, still grouped and the slip is named',d&&d.cat==='Mapped - Bulk Entries'&&/typing slip/.test(d.issue||''),d?d.cat+' / '+(d.issue||'').slice(0,160):''); }
+  { const res=run2([[D(2026,4,3),'BANK CHARGE','',-236],[D(2026,4,9),'BANK CHARGE','',-236],[D(2026,4,17),'BANK CHARGE','',-236],[D(2026,4,25),'BANK CHARGE','',-236],[D(2026,6,30),'PAD','',17]],[[D(2026,4,30),'JV1','BANK CHARGES','','','charges 236*4=944',-944]]);
+    T('Repeated charge: 236*4=944 covers four bank charges',[10,11,12,13].every(r=>cat2(res,r)==='Mapped - Bulk Entries'),[10,11,12,13].map(r=>cat2(res,r)).join(' | ')); }
+  { const res=run2([[D(2026,4,5),'NEFT CR-ABC TRADERS','',125000],[D(2026,6,30),'PAD','',17]],[[D(2026,6,20),'RV9','ABC TRADERS','12345','',' ',125000]]);
+    T('Same amount far apart in date is matched and shown as a date difference',cat2(res,10)==='Mapped - Date mismatch',cat2(res,10)); }
+  { const res=run2([[D(2026,4,5),'NEFT CR-ABC TRADERS','',125000],[D(2026,6,30),'PAD','',17]],[[D(2026,6,20),'RV9','ABC TRADERS','12345','',' ',125000]],{farMatch:false});
+    T('Far-date matching can be switched off',cat2(res,10)==='Mismatch',cat2(res,10)); }
+  { const res=run2([[D(2026,5,7),'NEFT CR-ONE','',110],[D(2026,5,7),'NEFT CR-TWO','',230],[D(2026,5,7),'NEFT CR-THREE','',360]],[[D(2026,5,7),'RV1','A','C1','','',150],[D(2026,5,7),'RV2','B','C2','','',260],[D(2026,5,7),'RV3','C','C3','','',290]]);
+    T('Day proved as a group when lines do not pair one to one',[10,11,12].every(r=>cat2(res,r)==='Mapped - Bulk Entries')&&/NOT traced line by line/.test((res.recs.find(x=>x.brow===10)||{}).issue||''),[10,11,12].map(r=>cat2(res,r)).join(' | ')); }
+  { const res=run2([[D(2026,4,1),'CHQ DEP - CLG/ABC/000123','',5000],[D(2026,6,20),'CHQ DEP RET - 000123','',-5000]],[[D(2026,5,1),'RV7','OTHER','C9','','',777]]);
+    T('Bank return found months later (80 days)',cat2(res,10)==='Mapped - Reversal'&&cat2(res,11)==='Mapped - Reversal',cat2(res,10)+' | '+cat2(res,11)); }
+  { const res=run2([[D(2026,4,1),'X','',100],[D(2026,6,30),'PAD','',17]],[[D(2026,4,1),'RV1','PARTY ONE','C1','','',100],[D(2026,4,4),'JV1','SUSPENSE PARTY','C2','','',10000],[D(2026,5,1),'JV2','SUSPENSE PARTY','C2','','',-4000],[D(2026,6,1),'JV3','SUSPENSE PARTY','C2','','',-6000]]);
+    const bo=res.recs.filter(d=>d.kind==='bkonly'); T('One Books entry clearing against several of the opposite direction',bo.length===3&&bo.every(d=>/offsets|clear each other/.test(d.why||'')),bo.map(d=>d.why).join(' | ')); }
+  }
   }catch(e){ T('Self-test ran without error',false,e.message); }
   const pass=out.filter(x=>x[1]).length;
   $('#stres').innerHTML=`<div class="msg ${pass===out.length?'ok':'bad'}"><b>${pass} of ${out.length} checks passed.</b></div><table class="t"><tr><th style="width:80px">Result</th><th>Check</th><th>Got</th></tr>${out.map(x=>`<tr><td><span class="tag ${x[1]?'ok':'bad'}">${x[1]?'Passed':'Failed'}</span></td><td>${esc(x[0])}</td><td class="small">${esc(x[2])}</td></tr>`).join('')}</table>`;
@@ -2385,7 +2582,7 @@ async function expandInputs(list,notes,depth){
 }
 /* ===== Data check: sorting of statements, completeness proofs ===== */
 const CK={};
-function fileSig(f,S){ return [f.id,f.sheetIdx,f.headerRow,JSON.stringify(f.map),JSON.stringify(f.filter),f.acctOverride||'',S.dayFirst,S.bookSign].join('|'); }
+function fileSig(f,S){ return [f.id,f.sheetIdx,f.headerRow,JSON.stringify(f.map),JSON.stringify(f.filter),f.acctOverride||'',S.dayFirst,S.bookSign,f.filter&&f.filter.val===AUTO_FILTER?(S.acctKey||''):''].join('|'); }
 function analyse(f,S){
   const k=fileSig(f,S); const c0=CK[f.id]; if(c0&&c0.k===k) return c0;
   const ex=extract(f,S); const c={k,ex};
@@ -2399,6 +2596,8 @@ function analyse(f,S){
     let lo=1e9,hi=-1e9,pay=0,rec=0; for(const l of ex.rows){ if(l.date<lo) lo=l.date; if(l.date>hi) hi=l.date; if(l.amt<0) pay+=IN.cents(l.amt); else rec+=IN.cents(l.amt); }
     const bset=new Set(ex.rows.map(l=>l.bacct).filter(v=>v)); const ov=(f.acctOverride||'').trim();
     c.bf={id:f.id,name:f.name,n:ex.rows.length,keys,sig:IN.hash(keys.slice().sort().join(';')),lo:ex.rows.length?lo:null,hi:ex.rows.length?hi:null,pay,rec,bacct:ov||(bset.size===1?[...bset][0]:(bset.size>1?'(mixed)':null)),bacctAuto:bset.size===1?[...bset][0]:null};
+    c.bf.bal=(()=>{ const R=ex.rows; const L=R.filter(r=>r.bal!=null&&isFinite(r.bal)); if(R.length<3||L.length<0.9*R.length) return null; let up=0,dn=0; const ub=[],db=[]; for(let i=1;i<R.length;i++){ const a=R[i-1],b=R[i]; if(a.bal==null||b.bal==null) continue; const d=IN.cents(b.bal)-IN.cents(a.bal), x=IN.cents(b.amt); if(d!==x){ up++; if(ub.length<5) ub.push(b.srow); } if(d!==-x){ dn++; if(db.length<5) db.push(b.srow); } }
+      const sign=up<=dn?1:-1, breaks=sign===1?up:dn; const ends=new Map(); for(const r of R){ if(r.bal==null) continue; const t=new Date(r.date*86400000); ends.set(t.getUTCFullYear()*100+t.getUTCMonth()+1,{bal:r.bal,date:r.date}); } return {n:L.length,sign,breaks,rows:sign===1?ub:db,ends}; })();
   }
   CK[f.id]=c; return c;
 }
@@ -2457,7 +2656,7 @@ const dstr=d=>d==null?'':fmtD(d);
 const rs=c=>c==null?'':(c/100).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});
 /* full list of tests for the selected account and the Books */
 function buildChecks(S){
-  const B=bankModel(S),K=booksModel(S); const T=[]; const add=(st,label,detail)=>T.push({st,label,detail:detail||''});
+  const B=bankModel(S),K=booksModel(S); let signInfo=null; const T=[]; const add=(st,label,detail)=>T.push({st,label,detail:detail||''});
   const g=B.groups.get(B.sel); let P=null;
   if(!g){ add('fail','Bank statement','No bank statement file with mapped columns was found.'); }
   else {
@@ -2468,7 +2667,8 @@ function buildChecks(S){
     add(nf?'fail':(nn?'warn':'pass'),'Each statement file proves itself',nf?`${nf} used file(s) fail their own tests (balance chain, opening, closing, totals or line count). See the file table.`:(nn?`${nn} used file(s) carry no balance column or summary, so they cannot prove themselves.`:`All ${lv.length} used file(s) agree with the balance on every line and with the bank's own summary (opening, closing, totals, line count) where the file gives one.`));
     const nonChain=pl.links.filter(l=>l.chain===false).length, unk=pl.links.filter(l=>l.chain==null).length;
     add(pl.links.length?(nonChain?'fail':(unk?'warn':'pass')):'info','Files join up (closing balance of one file = opening balance of the next)',pl.links.length?(nonChain?`${nonChain} join(s) do not agree: `+pl.links.filter(l=>l.chain===false).map(l=>`${l.a} closes at ${rs(l.closing)} but ${l.b} opens at ${rs(l.opening)}`).join('; '):(unk?`${unk} join(s) could not be tested (balance not available).`:`All ${pl.links.length} join(s) agree.`)):'Only one file is used for this account.');
-    add(pl.gaps.length?'fail':'pass','No missing days in the statement period',pl.gaps.length?'Not covered: '+pl.gaps.map(x=>x[0]===x[1]?dstr(x[0]):dstr(x[0])+' to '+dstr(x[1])).join('; ')+'. Add the missing statement.':`Covered from ${dstr(pl.from)} to ${dstr(pl.to)}, with no gap between files.`);
+{ const real=pl.gaps.filter(x=>!x[2]), quiet=pl.gaps.filter(x=>x[2]); const rng=x=>x[0]===x[1]?dstr(x[0]):dstr(x[0])+' to '+dstr(x[1]);
+      add(real.length?'fail':'pass','No missing days in the statement period',real.length?'The balance does not join across: '+real.map(x=>rng(x)+(x[3]!=null?' (movement not explained by any statement: Rs '+rs(x[3])+')':'')).join('; ')+'. A statement is genuinely missing. The period cannot be called reconciled until it is added.':`Covered from ${dstr(pl.from)} to ${dstr(pl.to)}.`+(quiet.length?' The dates skip on '+quiet.map(rng).join('; ')+', but the balance joins across, so those days had no transactions and nothing is missing.':' No gap between files.')); }
     if(pl.overlaps.length) add('info','Files overlap',`${pl.overlaps.length} overlap(s) between used files. ${P.mg.dropped} line(s) that appear in both files were counted once.`);
     const outN=pl.kept.reduce((a,k)=>a+g.byId.get(k.id).a.outside,0); if(outN) add(outN>Math.max(5,0.01*P.n)?'warn':'info','Lines dated outside the file period',outN>Math.max(5,0.01*P.n)?`${outN.toLocaleString()} line(s) are dated outside the period shown in their own file. Check that the date format (day / month / year) in Settings is right.`:`${outN} line(s) are dated just before or after the period shown in their own file (for example a late-night entry with the next day as value date). They are kept once.`);
     add(P.ok==null?'warn':(P.ok?'pass':'fail'),'Opening balance + credits - debits = closing balance (all files together)',P.ok==null?'Opening or closing balance not available.':`Opening ${rs(P.opening)} + credits ${rs(P.credit)} - debits ${rs(P.debit)} = ${rs(P.opening+P.credit-P.debit)}; closing balance per statement ${rs(P.closing)}${P.ok?'. Nothing is missing and nothing is counted twice.':'. Difference '+rs(P.opening+P.net-P.closing)+'.'}`);
@@ -2482,6 +2682,28 @@ function buildChecks(S){
     if(g.items.some(x=>x.via==='file name')) add('warn','Account number taken from the file name',g.items.filter(x=>x.via==='file name').map(x=>x.f.name).join('; '));
     if(g.items.some(x=>x.via==='balance chain')) add('warn','Account number not stated in the file',g.items.filter(x=>x.via==='balance chain').map(x=>x.f.name).join('; ')+': the opening or closing balance continues this account, so the file was placed here. Please confirm.');
   }
+  { const MN=['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'], FULL=['january','february','march','april','may','june','july','august','september','october','november','december'];
+    const nameMonths=nm=>{ const t=String(nm||'').split('/').pop().toLowerCase().replace(/\.[a-z]+$/,''); const o=new Set(); for(let i=0;i<12;i++){ if(new RegExp('(^|[^a-z])('+FULL[i]+'|'+MN[i]+')([^a-z]|$)').test(t)) o.add(i); } return o; };
+    const mm=(from,to)=>{ if(from==null||to==null) return null; const a=new Date(from*86400000), b=new Date(to*86400000); const o=new Set(); let y=a.getUTCFullYear(),m=a.getUTCMonth(); for(let n=0;n<14;n++){ o.add(m); if(y===b.getUTCFullYear()&&m===b.getUTCMonth()) break; m++; if(m>11){ m=0; y++; } } return o; };
+    const bad=[]; const chk=(name,from,to)=>{ const nmM=nameMonths(name), cm=mm(from,to); if(nmM.size!==1||!cm) return; const w=[...nmM][0]; if(!cm.has(w)) bad.push(name.split('/').pop()+' (named for '+FULL[w]+', holds '+dstr(from)+' to '+dstr(to)+')'); };
+    if(g) for(const x of g.items) chk(x.f.name,x.a.pf.from,x.a.pf.to); for(const x of K.items) chk(x.f.name,x.a.bf.lo,x.a.bf.hi);
+    if(bad.length) add('warn','A file is named for a different month from the one it holds',bad.join('; ')+'. The tool goes by the dates inside the file, not by its name. Please confirm the right file was uploaded.');
+    if(P&&P.mg.lines.length>=20){ const mon=new Map(); for(const l of P.mg.lines){ const t=new Date(l.date*86400000); const k=t.getUTCFullYear()*100+t.getUTCMonth(); const o=mon.get(k)||{cr:0,dr:0}; const c=IN.cents(l.amt); if(c>0) o.cr+=c; else o.dr-=c; mon.set(k,o); }
+      const ms=[...mon.values()].filter(o=>Math.max(o.cr,o.dr)>0); if(ms.length>=2&&ms.every(o=>Math.abs(o.cr-o.dr)<=Math.max(o.cr,o.dr)*0.002+100)) add('info','This account behaves as a pass-through account','Every month, receipts and payments out are equal to within 0.2 percent, so the account only passes money on (a collection or settlement account). The reconciliation is still run, but the balance at the end of each month is close to nil and large equal and opposite amounts are expected.'); }
+    const dorm=K.items.filter(x=>x.a.ex.info.used===0&&x.a.ex.info.sheetRows>0); if(dorm.length) add('info','Bank book file(s) with no movement',dorm.map(x=>x.f.name).join('; ')+': only an opening balance or headings, no entries. They are reported and take no part in the matching.'); }
+  { const wb=K.items.filter(x=>x.a.bf.status==='used'&&x.a.bf.bal); if(wb.length){ const brk=wb.reduce((a,x)=>a+x.a.bf.bal.breaks,0);
+      add(brk?'fail':'pass','The bank book running balance holds on every entry',brk?wb.filter(x=>x.a.bf.bal.breaks).map(x=>x.f.name+': '+x.a.bf.bal.breaks+' break(s), first at row '+x.a.bf.bal.rows[0]).join('; ')+'. Some entries are missing, changed or out of order in the file.':`Balance after each entry equals the balance before it ${wb[0].a.bf.bal.sign===1?'plus':'less'} the amount, on all ${wb.reduce((a,x)=>a+x.a.bf.bal.n,0).toLocaleString()} entries.`);
+      if(P&&P.mg.lines.length){ const bankEnd=new Map(); for(const l of P.mg.lines){ if(l.bal==null) continue; const t=new Date(l.date*86400000); bankEnd.set(t.getUTCFullYear()*100+t.getUTCMonth()+1,l.bal); } const bookEnd=new Map(); for(const x of wb) for(const [k,v] of x.a.bf.bal.ends) bookEnd.set(k,v.bal);
+        const rows=[]; for(const [k,v] of [...bookEnd.entries()].sort((a,b)=>a[0]-b[0])){ if(!bankEnd.has(k)) continue; const d=Math.round((v-bankEnd.get(k))*100)/100; rows.push(['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][k%100-1]+' '+Math.floor(k/100)+': book '+rs(IN.cents(v))+', bank '+rs(IN.cents(bankEnd.get(k)))+(d?', difference '+rs(IN.cents(d)):', agrees')); }
+        if(rows.length) add('info','Month-end balance of the bank book against the bank statement',rows.join('; ')+'. A difference is made up of the items listed as unmatched on the Run and review page.'); } } }
+  // the sign convention of the bank book is worked out from the data: how many book entries find a bank line of the same signed amount, as they are and with the signs reversed
+  { const usedB=K.items.filter(x=>x.a.bf.status==='used'); if(P&&P.mg.lines.length&&usedB.length){ const bk=new Map(); for(const l of P.mg.lines){ const c=IN.cents(l.amt); if(!c) continue; if(!bk.has(c)) bk.set(c,[]); bk.get(c).push(l.date); }
+      let m1=0,m2=0,n=0; const dlo=Math.min(...P.mg.lines.map(l=>l.date)), dhi=Math.max(...P.mg.lines.map(l=>l.date)); for(const x of usedB) for(const r of x.a.ex.rows){ const c=IN.cents(r.amt); if(!c||r.date<dlo||r.date>dhi) continue; n++; const a=bk.get(c); if(a&&a.some(d=>Math.abs(d-r.date)<=S.dateWin)) m1++; const b=bk.get(-c); if(b&&b.some(d=>Math.abs(d-r.date)<=S.dateWin)) m2++; }
+      const flip=m2>2*m1+10; signInfo={m1,m2,n,flip,auto:S.bookSign==='auto'};
+      const now=S.bookSign==='pos-out'?'a positive amount (or a debit) in the book is money paid out of the bank':'a positive amount (or a debit) in the book is money received in the bank';
+      const ev=`${m1.toLocaleString()} of ${n.toLocaleString()} bank book entries inside the statement period find a bank line of the same amount and direction within ${S.dateWin} day(s); with the signs reversed only ${m2.toLocaleString()} do.`;
+      if(S.bookSign==='auto') add('pass','Sign convention of the bank book (worked out from the data)',flip?`The book is signed the other way round from the bank. ${ev} The signs of the book were reversed for the matching, so nothing is lost. You can override this in Settings.`:`Used: ${now}. ${ev} You can override this in Settings.`);
+      else add(flip?'fail':'pass','Sign convention of the bank book (set in Settings)',flip?`Settings say ${now}, but the data says the opposite. ${ev} Change the setting, or choose "worked out from the data".`:`Used: ${now}. ${ev}`); } }
   const other=[...B.groups.values()].filter(x=>x.key!==B.sel); if(other.length) add('warn','Other bank accounts in the upload - not reconciled in this run',other.map(x=>`${x.account||'?'} (${x.items.length} file(s), ${x.lines.toLocaleString()} lines)`).join('; ')+'. These lines are NOT reconciled in this run. Tell the tool which account they belong to, or reconcile them as their own account (see the table on this page).');
   if(B.groups.size>1&&B.groups.has('?')) add('warn','Statement file(s) do not say which account they are for',B.groups.get('?').items.map(x=>x.f.name).join('; ')+'. This upload has more than one bank account. Enter the account in the Account column above if you know it; if you do not, treat this file as an observation, not a proven account.');
   if(B.unmapped.length) add('fail','Bank files with columns not mapped',B.unmapped.map(f=>f.name).join('; '));
@@ -2494,6 +2716,7 @@ function buildChecks(S){
     if(K.bacctVals.length>1){ const oaN=K.items.filter(x=>x.a.bf.status==='other-acct').length; const chosen=effBookKey(S)&&K.bacctVals.includes(effBookKey(S));
       add(chosen?'pass':'warn','Bank book covers more than one bank account',chosen?`This run uses only the book entries for ${effBookKey(S)}. ${oaN} file(s) for ${K.bacctVals.filter(v=>v!==effBookKey(S)).join('; ')} are set aside (tick Use on a file in the table to include it anyway).`:`The uploaded bank book mixes entries from more than one bank account: ${K.bacctVals.join('; ')}. Pick the one for this run in the Bank book card below, otherwise every account's entries are matched against this statement together and the result will not be reliable.`); }
     const untagged=K.items.filter(x=>!x.a.bf.bacct); if(untagged.length&&(K.bacctVals.length>1||B.groups.size>1)) add('warn','Bank book file(s) do not say which account they are for',`${untagged.map(x=>x.f.name).join('; ')}. This upload has more than one bank account in play. Enter the account in the Account column above if you know it; if you do not, these entries are included in every account's run - treat matches to them as an observation, not a proven match.`);
+    const autoFail=used.filter(x=>x.a.ex.info.filterAutoFailed); if(autoFail.length) add('warn','Could not tell apart the account for some bank book rows',`${autoFail.map(x=>x.f.name).join('; ')}: this account's number could not be told apart from the others, so the rows chosen for this run may be for the wrong account. Open Column setup, "Advanced: use only some rows of the sheet", and choose the right value by hand for this run.`);
     const un=used.reduce((a,x)=>a+x.a.ex.info.unreadN,0); const tot=used.reduce((a,x)=>a+x.a.ex.info.sheetRows,0), acc=used.reduce((a,x)=>{ const i=x.a.ex.info; return a+i.used+i.blank+i.filtered+i.nonTxn+i.cont+i.unreadN; },0);
     add((un||tot!==acc)?'fail':'pass','Every row of the bank book is accounted for',un?`${un} row(s) with an amount could not be read (see the file table).`:`${tot.toLocaleString()} row(s) in the used files = ${used.reduce((a,x)=>a+x.a.ex.info.used,0).toLocaleString()} entries read + ${used.reduce((a,x)=>a+x.a.ex.info.filtered,0).toLocaleString()} rows of other accounts (filter) + ${used.reduce((a,x)=>a+x.a.ex.info.nonTxn+x.a.ex.info.blank,0).toLocaleString()} blank, heading or total rows. No row with an amount was left out.`);
     if(K.repeated) add('warn','Repeated entries in the bank book',`${K.repeated.toLocaleString()} entr(ies) appear more than once with the same date, amount, voucher, code, cheque no. and party. They are kept as separate entries (a voucher can repeat), please confirm they are not a file loaded twice.`);
@@ -2502,7 +2725,7 @@ function buildChecks(S){
       add((before||after)?'info':'pass','Bank book period against statement period',`Bank book runs ${dstr(lo)} to ${dstr(hi)}; statement runs ${dstr(fr)} to ${dstr(to)}.`+((before||after)?` ${(before+after).toLocaleString()} bank book entries fall outside the statement period. They are listed separately and are not counted as unmatched.`:' All bank book entries fall inside the statement period.')); }
   }
   const nf=T.filter(t=>t.st==='fail').length,nw=T.filter(t=>t.st==='warn').length;
-  return {B,K,g,P,T,verdict:nf?'fail':(nw?'warn':'pass'),nf,nw};
+  return {B,K,g,P,T,signInfo,verdict:nf?'fail':(nw?'warn':'pass'),nf,nw};
 }
 const ST={pass:['Passed','ok'],fail:['Failed','bad'],warn:['Check','warn'],info:['Note','']};
 function testRows(T){ return `<table class="t"><tr><th style="width:80px">Result</th><th style="width:34%">Test</th><th>Detail</th></tr>`+T.map(t=>`<tr><td><span class="tag ${ST[t.st][1]}">${ST[t.st][0]}</span></td><td>${esc(t.label)}</td><td>${esc(t.detail)}</td></tr>`).join('')+'</table>'; }
@@ -2526,9 +2749,10 @@ const MEAN={'Absolute match':'Reference, date, amount, vendor code and vendor na
 function gather(){
   const S=S_(); const C=buildChecks(S); const master=new Map(); const books=[];
   for(const x of C.K.items) if(x.a.bf.status==='used') books.push(...x.a.ex.rows);
+  if(S.bookSign==='auto'&&C.signInfo&&C.signInfo.flip) for(let i=0;i<books.length;i++) books[i]=Object.assign({},books[i],{amt:-books[i].amt});
   for(const f of state.files) if(f.role==='master'&&mapped(f)) extract(f,S).rows.forEach(r=>master.set(r.code,r.name));
   const xBank=[]; for(const g2 of C.B.groups.values()) if(g2.key!==C.B.sel){ try{ proofOf(g2).mg.lines.forEach(l=>xBank.push(Object.assign({},l,{acct:g2.account||g2.key}))); }catch(e){} }
-  const xBooks=[]; for(const x of C.K.items) if(x.a.bf.status==='other-acct') xBooks.push(...x.a.ex.rows);
+  const xBooks=[]; for(const x of C.K.items) if(x.a.bf.status==='other-acct') xBooks.push(...x.a.ex.rows.map(r=>(S.bookSign==='auto'&&C.signInfo&&C.signInfo.flip)?Object.assign({},r,{amt:-r.amt}):r));
   return {bank:C.P?C.P.mg.lines:[],books,master,xBank,xBooks,C};
 }
 async function doRun(progress,acctKey){
@@ -2536,7 +2760,7 @@ async function doRun(progress,acctKey){
     progress('Reading lines',10); await tick();
     RE.setGeneric(S.generic);
     const g=gather(); if(!g.bank.length) throw new Error('No usable lines were read from the bank statement. Check the date and amount columns.'); if(!g.books.length) throw new Error('No usable lines were read from the bank book. Check the date and amount columns.');
-    let p=10; const res=RE.run(g.bank,g.books,g.master,{dateWin:S.dateWin,tol:S.tol,mismatchLimit:S.mismatchLimit,vendorRe:S.vendorRe,customerRe:S.customerRe,suspense:S.suspense,noMaster:!g.master.size,xBank:g.xBank,xBooks:g.xBooks},t=>{ p=Math.min(90,p+12); progress(t,p); });
+    let p=10; const res=RE.run(g.bank,g.books,g.master,{dateWin:S.dateWin,tol:S.tol,mismatchLimit:S.mismatchLimit,farMatch:S.farMatch!==false,revWin:S.revWin==null?365:S.revWin,bulkWin:S.bulkWin==null?30:S.bulkWin,vendorRe:S.vendorRe,customerRe:S.customerRe,suspense:S.suspense,noMaster:!g.master.size,xBank:g.xBank,xBooks:g.xBooks},t=>{ p=Math.min(90,p+12); progress(t,p); });
     await tick(); progress('Saving',95);
     const bankWd=g.bank.filter(x=>x.amt<0).reduce((s,x)=>s+x.amt,0),bankDp=g.bank.filter(x=>x.amt>0).reduce((s,x)=>s+x.amt,0);
     const t=res.tie,rb=res.recs.filter(d=>d.brow!=null); let cw=0,cd=0; for(const d of rb){ cw+=IN.cents(d.wd||0); cd+=IN.cents(d.dp||0); }
@@ -2552,8 +2776,8 @@ async function doRun(progress,acctKey){
 function sums(recs){ const t={}; for(const c of CATS) t[c]={n:0,wd:0,dp:0,kp:0,kr:0}; for(const d of recs){ const x=t[d.cat]||(t[d.cat]={n:0,wd:0,dp:0,kp:0,kr:0}); x.n++; x.wd+=d.wd||0; x.dp+=d.dp||0; x.kp+=d.kpay||0; x.kr+=d.krec||0; } return t; }
 function download(blob,name){ const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},2000); }
 /* ===== Excel export (ExcelJS) ===== */
-const XCOLS=[['no','No.',7,'0'],['cat','Category',22],['why','Reason',24],['issue','Real issue',46],['brow','Bank row',8,'0'],['bdate','Bank date',12,'dd-mmm-yyyy'],['ref','Bank reference',17],['wd','Withdrawal (Rs)',16,'#,##0.00'],['dp','Deposit (Rs)',16,'#,##0.00'],['bname','Vendor name as per bank statement',24],
- ['krow','Books row',10],['vch','Voucher no.',13],['kdate','Books date',12,'dd-mmm-yyyy'],['kpay','Books payment (Rs)',16,'#,##0.00'],['krec','Books receipt (Rs)',16,'#,##0.00'],['kcode','Vendor code as per Books',10],['kname','Vendor name as per Books',26],['mname','Vendor name as per Vendor Master',26],
+const XCOLS=[['no','No.',7,'0'],['cat','Category',22],['rule','Matched by',22],['why','Reason',24],['issue','Real issue',46],['brow','Bank row',8,'0'],['bdate','Bank date',12,'dd-mmm-yyyy'],['ref','Bank reference',17],['wd','Withdrawal (Rs)',16,'#,##0.00'],['dp','Deposit (Rs)',16,'#,##0.00'],['bname','Vendor name as per bank statement',24],
+ ['krow','Books row',10],['vch','Voucher no.',13],['vtype','Voucher type',15],['bacct','Book account',15],['kdate','Books date',12,'dd-mmm-yyyy'],['kpay','Books payment (Rs)',16,'#,##0.00'],['krec','Books receipt (Rs)',16,'#,##0.00'],['kcode','Vendor code as per Books',10],['kname','Vendor name as per Books',26],['mname','Vendor name as per Vendor Master',26],
  ['S','Ref same?',11],['T','Date same?',8],['days','Days apart',8,'0'],['first','Which came first',11],['U','Amount same?',10],['V','Code check',11],['W','Name check',10],['diff','Difference (Rs)',13,'#,##0.00'],['grp','Group ref',10],['file','Bank Book file',26],['frow','Row in file',9],['narr','Bank narration',44]];
 const XC={}; XCOLS.forEach((c,i)=>{ XC[c[0]]=XLSX.utils.encode_col(i+1); });
 const XNAME=Object.fromEntries(XCOLS.map((c,i)=>[c[0],i+2]));
@@ -2576,7 +2800,7 @@ async function buildWorkbook(R,S,withExt,progress){
     const single=d.kind==='single'; const T=single?(d.bdate===d.kdate?'Yes':'No'):'-'; const days=(single&&T==='No')?Math.abs(d.kdate-d.bdate):null; const first=(single&&T==='No')?(d.kdate>d.bdate?'Bank first':'Books first'):null;
     const diff=d.kind==='agg'?null:Math.round(((d.dp||0)-(d.wd||0)-((d.krec||0)-(d.kpay||0)))*100)/100;
     const Uv=single?(Math.abs(diff)<0.005?'Yes':(Math.abs(diff)<=0.02?'Rs 0.02 off':'No')):'-';
-    const vals={no:d.no,cat:d.cat,why:d.why,issue:d.issue,brow:d.brow,bdate:dayDate(d.bdate),ref:d.ref,wd:d.wd,dp:d.dp,bname:d.bname,krow:d.krow==null?null:String(d.krow),vch:d.vch==null?null:String(d.vch),kdate:dayDate(d.kdate),kpay:d.kpay,krec:d.krec,kcode:d.kcode==null?null:String(d.kcode),kname:d.kname,mname:d.mname,S:d.S,V:d.V,W:d.W,grp:d.grp,file:d.file,frow:d.frow,narr:d.narr};
+    const vals={no:d.no,cat:d.cat,rule:methodOf(d),vtype:d.vtype||null,bacct:d.bacct||null,why:d.why,issue:d.issue,brow:d.brow,bdate:dayDate(d.bdate),ref:d.ref,wd:d.wd,dp:d.dp,bname:d.bname,krow:d.krow==null?null:String(d.krow),vch:d.vch==null?null:String(d.vch),kdate:dayDate(d.kdate),kpay:d.kpay,krec:d.krec,kcode:d.kcode==null?null:String(d.kcode),kname:d.kname,mname:d.mname,S:d.S,V:d.V,W:d.W,grp:d.grp,file:d.file,frow:d.frow,narr:d.narr};
     for(const c of XCOLS){ const k=c[0]; let x=vals[k];
       if(k==='T') x=single?{formula:`IF(OR(${L('bdate')}="",${L('kdate')}=""),"-",IF(${L('bdate')}=${L('kdate')},"Yes","No"))`,result:T}:'-';
       else if(k==='days') x=single?{formula:`IF(${L('T')}="No",ABS(${L('kdate')}-${L('bdate')}),"")`,result:days==null?'':days}:'-';
@@ -2602,6 +2826,16 @@ async function buildWorkbook(R,S,withExt,progress){
     sec('What this workbook is');
     ln('Purpose','Every line of the bank statement is compared with the bank book and given one category. Entries of the bank book with no bank line are listed as well. The work is a comparison of two records. It is not an audit and no conclusion is drawn from the bank narration, other than reading a reference or a party name from it.');
     ln('Period',fmtD(R.period[0])+' to '+fmtD(R.period[1])+'. Bank book entries dated outside this period are listed on Outside Period and are not counted as unmatched.');
+    sec('Settings used in this run');
+    ln('Date window for loose matching',S.dateWin+' day(s)'); ln('Small amount tolerance','Rs '+S.tol); ln('Largest amount gap still paired','Rs '+S.mismatchLimit); ln('Bulk and vendor group window',(S.bulkWin==null?30:S.bulkWin)+' day(s)'); ln('Reversal window',(S.revWin==null?365:S.revWin)+' day(s)'); ln('Same amount, dates far apart',S.farMatch!==false?'Matched, and shown as a date difference':'Not matched'); ln('Sign of the bank book',S.bookSign==='auto'?'Worked out from the data (the result is on Data Check)':S.bookSign==='pos-out'?'A positive amount or a debit is money paid out':'A positive amount or a debit is money received');
+    sec('Matching rules, strongest first');
+    ln('Principle','The amount is the key and is compared in paise. Date, reference and name only add or remove confidence; they never create a match on their own. Nothing is concluded from the words of a bank narration.');
+    ln('1 One to one','Same reference and amount; same date and amount; amount within the date window (only when unique on both sides); then the same amount further apart, shown as a date difference.');
+    ln('2 One to many','One bank line against several Books entries (same reference, same day, same party, deposit batches), and several bank lines against one entry (batch runs, part payments, same narration). Every entry is used once.');
+    ln('3 Read the narration','Amounts written in a Books narration such as (236100+14966+3000) are looked for as separate bank lines, with one-digit typing slips named; 236*4=944 is looked for as four charges of 236.');
+    ln('4 Pairs that cancel','A bank debit and credit of the same amount (a returned cheque, searched across the whole reversal window); equal and opposite Books entries, including one entry cleared by several; a payment returned by the bank and paid again.');
+    ln('5 Differences worth naming','Same reference with a small amount difference; same date and party with a small amount difference; days whose bank total and Books total agree, shown as proved in total and not traced line by line.');
+    ln('6 Untraced','Only after the whole period was searched on both sides. The Real issue column says where the search looked and what came back, and separates an amount that exists but was already used from an amount that does not exist.');
     sec('Sheets, in the order to read them');
     ln('Summary','Count and amount of lines in each category, with checks that the counts agree with Combined.');
     ln('Data Check','Proof that the data was read completely: opening balance plus credits less debits equals closing balance, every file used, and every row accounted for.');
@@ -2614,7 +2848,7 @@ async function buildWorkbook(R,S,withExt,progress){
     for(const c of CATS) ln(c,MEAN[c]||"");
     ln('How a category is chosen','A line receives the first category in this order that applies to it, so a line has one category. Every test stays visible in the check columns of Combined.');
     sec('Columns of Combined');
-    const COLMEAN={no:'Running number.',cat:'Category of the line.',why:'Short reason for the category.',issue:'The difference in words.',brow:'Row of the line in the bank statement file.',bdate:'Date on the bank statement.',ref:'Reference or cheque number on the bank statement.',wd:'Money paid out, per bank.',dp:'Money received, per bank.',bname:'Party name read from the bank narration.',krow:'Row in the bank book file.',vch:'Voucher number in the bank book.',kdate:'Date in the bank book.',kpay:'Payment per bank book.',krec:'Receipt per bank book.',kcode:'Vendor or customer code in the bank book.',kname:'Party name in the bank book.',mname:'Name for that code in the Vendor Master.',S:'Whether the reference is the same on both sides.',T:'Whether the date is the same (formula).',days:'Days between the two dates (formula).',first:'Which side is dated first (formula).',U:'Whether the amount is the same (formula).',V:'Whether the code is valid.',W:'Whether the names agree.',diff:'Bank amount less Books amount (formula).',grp:'Reference shared by the lines of one group.',file:'Name of the bank book file the entry came from.',frow:'Row of the entry in that file.'};
+    const COLMEAN={no:'Running number.',cat:'Category of the line.',rule:'The rule that matched the line (kept apart from the sentence, so totals can be counted by rule).',vtype:'Kind of voucher in plain words, read from the voucher number.',bacct:'Bank account of the entry in the bank book, when the book names one.',why:'Short reason for the category.',issue:'The difference in words.',brow:'Row of the line in the bank statement file.',bdate:'Date on the bank statement.',ref:'Reference or cheque number on the bank statement.',wd:'Money paid out, per bank.',dp:'Money received, per bank.',bname:'Party name read from the bank narration.',krow:'Row in the bank book file.',vch:'Voucher number in the bank book.',kdate:'Date in the bank book.',kpay:'Payment per bank book.',krec:'Receipt per bank book.',kcode:'Vendor or customer code in the bank book.',kname:'Party name in the bank book.',mname:'Name for that code in the Vendor Master.',S:'Whether the reference is the same on both sides.',T:'Whether the date is the same (formula).',days:'Days between the two dates (formula).',first:'Which side is dated first (formula).',U:'Whether the amount is the same (formula).',V:'Whether the code is valid.',W:'Whether the names agree.',diff:'Bank amount less Books amount (formula).',grp:'Reference shared by the lines of one group.',file:'Name of the bank book file the entry came from.',frow:'Row of the entry in that file.'};
     for(const c of XCOLS) if(COLMEAN[c[0]]) ln(c[1],COLMEAN[c[0]]);
     sec('How accurate this is, and what it cannot tell');
     ln('Proven by arithmetic','The statement is complete (balance on each line, bank opening, closing and totals). Every statement line and every bank book entry appears once. Totals tie to the source. See Data Check.');
@@ -3922,7 +4156,13 @@ function matchBooks(accts,pf,pt){ const out=[]; const W=Math.max(0,B.opts.bwin==
     // otherwise have found; each group needs at least one line from each side to count as a real match
     for(const g of (B.bkManual||{})[a.label]||[]){ const bx=res.bankOnly.filter(x=>(g.bankKeys||[]).includes(fundFixKey(x))); const be=res.bookOnly.filter(e=>(g.bookKeys||[]).includes(bkEntryKey(e))); if(!bx.length||!be.length) continue;
       const bxIds=new Set(bx.map(x=>x.id)), beIds=new Set(be.map(e=>e.id)); res.bankOnly=res.bankOnly.filter(x=>!bxIds.has(x.id)); res.bookOnly=res.bookOnly.filter(e=>!beIds.has(e.id));
-      res.matched.push({xs:bx,es:be,how:'Matched by you',gap:0,manual:true,mkey:g.bankKeys.join(',')+'>'+g.bookKeys.join(',')}); }
+      const mm={xs:bx,es:be,how:g.bulk?'Bulk payment, matched by you ('+be.length+' book entr'+(be.length===1?'y':'ies')+')':'Matched by you',gap:0,manual:true,mkey:g.bankKeys.join(',')+'>'+g.bookKeys.join(',')};
+      // marking it a bulk payment feeds the exact same breakdown the automatic bulk matches already do (the Fund
+      // utilisation tab and the Excel export's Bulk Entries sheet both read this the same way, from `m.bulk`/
+      // `m.main` on any matched group, not only ones the automatic rules above found) - `m.main` picks the largest
+      // book entry the same way the automatic rule does, so a vendor-level breakdown has a sensible main line
+      if(g.bulk){ mm.bulk=true; mm.main=be.slice().sort((p,q)=>q.a-p.a)[0]; }
+      res.matched.push(mm); }
     // a payment the bank returned and that was then paid again: the credit and the new debit are both in the statement only, and cancel out
     res.rePaid=[]; { const REJ=/\bREJ(ECT)?\b|REVERS|RETURN|REFUND/i; const used=new Set(); for(const rj of res.bankOnly.filter(z=>z.dir==='C'&&REJ.test(z.narr)).sort((a,b)=>a.date-b.date)){ if(used.has(rj.id)) continue; const t=Math.round(rj.amt*100); const ds=res.bankOnly.filter(z=>z.dir==='D'&&!used.has(z.id)&&z.date>=rj.date-1&&z.date<=rj.date+7); let pick=ds.find(z=>Math.round(z.amt*100)===t); pick=pick?[pick]:null; for(let i=0;i<ds.length&&!pick;i++) for(let j=i+1;j<ds.length&&!pick;j++) if(Math.round(ds[i].amt*100)+Math.round(ds[j].amt*100)===t) pick=[ds[i],ds[j]]; if(pick){ used.add(rj.id); for(const z of pick) used.add(z.id); res.rePaid.push(rj,...pick); } } if(used.size) res.bankOnly=res.bankOnly.filter(z=>!used.has(z.id)); }
     // a payment the book itself later cancels (a receipt or reversal voucher for the same party and amount) never reached the bank: it is not a difference
@@ -3951,8 +4191,8 @@ function bkResultCard(o){ const rowsB=l=>l.slice(0,200); const more=l=>l.length>
   return `<div class="card" data-rec="${esc(o.label)}"><div class="hd"><h3>Bank book against statement: ${esc(o.label)}</h3><span class="small">${bk} - ${dstr(o.lo)} to ${dstr(o.hi)}</span></div>${banner}<div class="bd"><div class="grid g4" style="margin-bottom:0;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))">${tile(o.matched.length.toLocaleString(),'Matched','ok')}${tile(o.bankOnly.length.toLocaleString(),'In the statement, not in the book<br>Rs '+inr(o.boIn+o.boOut),o.bankOnly.length?'warn':'')}${tile(o.bookOnly.length.toLocaleString(),'In the book, not in the statement<br>Rs '+inr(o.koIn+o.koOut),o.bookOnly.length?'warn':'')}${o.selfRev.length?tile(o.selfRev.length.toLocaleString(),'Entered and cancelled in the book itself, never reached the bank'):''}</div>
     <div class="small" style="margin-top:10px">Compared over the dates both cover (${dstr(o.lo)} to ${dstr(o.hi)}): statement ${o.nBank.toLocaleString()} lines, Rs ${inr(o.bankIn)} in and Rs ${inr(o.bankOut)} out; book ${o.nBook.toLocaleString()} entries, Rs ${inr(o.bookIn)} received and Rs ${inr(o.bookOut)} paid. ${o.outBank||o.outBook?`Left out as outside those dates: ${o.outBank} statement line(s) and ${o.outBook} book entr${o.outBook===1?'y':'ies'}.`:''} Matching rule: same amount and direction, then the same reference, else dates up to ${o.W} day(s) apart.</div></div>${brs}
     <div class="hd" style="border-top:1px solid var(--rule)"><h3>In the statement, not in the book</h3><span class="small">${pl(o.bankOnly.length,'line')}</span></div>${o.rePaid&&o.rePaid.length?`<div class="small" style="padding:0 22px 8px">${pl(o.rePaid.length,'more line')} are payments the bank returned and that were then paid again. They cancel out, so they are not listed here.</div>`:''}${o.bankOnly.length?`<div class="small" style="padding:0 22px 8px">Tick the lines on each side below that are really the same transaction (a name spelt differently, a payment netted against a charge, anything the rules above could not work out on their own), then <b>Match the ticked lines</b>.</div><div class="scroll nb"><table class="t"><tr><th></th><th>Date</th><th>Narration</th><th>Type</th><th class="r">Debit</th><th class="r">Credit</th></tr>${rowsB(o.bankOnly).map(x=>`<tr><td><input type="checkbox" class="bkPickX" data-k="${esc(fundFixKey(x))}"></td><td class="n">${dstr(x.date)}</td><td class="w"><div class="clamp">${esc(x.narr)}</div></td><td class="n">${esc(x.cat)}</td><td class="r">${x.dir==='D'?inr(x.amt):''}</td><td class="r">${x.dir==='C'?inr(x.amt):''}</td></tr>`).join('')}</table></div>${more(o.bankOnly)}`:'<div class="empty">Every statement line is in the book.</div>'}
-    <div class="hd" style="border-top:1px solid var(--rule)"><h3>In the book, not in the statement</h3><span class="small">${o.bookOnly.length} entr${o.bookOnly.length===1?'y':'ies'}</span></div>${o.bookOnly.length?`<div class="scroll nb"><table class="t"><tr><th></th><th>Date</th><th>Party</th><th>Voucher</th><th>Reference</th><th class="r">Received</th><th class="r">Paid</th></tr>${rowsB(o.bookOnly).map(e=>`<tr><td><input type="checkbox" class="bkPickE" data-k="${esc(bkEntryKey(e))}"></td><td class="n">${dstr(e.d)}</td><td class="w">${esc(e.p||e.r2)}${e.x?`<div class="small">${esc(e.x)}</div>`:''}</td><td>${esc(e.v)}</td><td class="w"><div class="clamp">${esc(e.r)}</div></td><td class="r">${e.t==='C'?inr(e.a):''}</td><td class="r">${e.t==='D'?inr(e.a):''}</td></tr>`).join('')}</table></div>${more(o.bookOnly)}`:'<div class="empty">Every book entry is in the statement.</div>'}
-    ${(o.bankOnly.length&&o.bookOnly.length)?`<div class="row" style="margin:12px 22px"><button id="bkMatchGo" disabled>Tick a line on each side to match them</button></div>`:''}
+    <div class="hd" style="border-top:1px solid var(--rule)"><h3>In the book, not in the statement</h3><span class="small">${o.bookOnly.length} entr${o.bookOnly.length===1?'y':'ies'}</span></div>${o.bookOnly.length?`<div class="scroll nb"><table class="t"><tr><th></th><th>Date</th><th>Party</th><th>Voucher</th><th>Reference</th><th class="r">Received</th><th class="r">Paid</th></tr>${rowsB(o.bookOnly).map(e=>`<tr><td><input type="checkbox" class="bkPickE" data-k="${esc(bkEntryKey(e))}"></td><td class="n">${dstr(e.d)}</td><td class="w">${esc(e.p||e.r2)}${e.x?`<div class="small">${esc(e.x)}</div>`:''}${gapNote(o,e)?`<div class="small" style="color:var(--break)">${esc(gapNote(o,e))}</div>`:''}</td><td>${esc(e.v)}</td><td class="w"><div class="clamp">${esc(e.r)}</div></td><td class="r">${e.t==='C'?inr(e.a):''}</td><td class="r">${e.t==='D'?inr(e.a):''}</td></tr>`).join('')}</table></div>${more(o.bookOnly)}`:'<div class="empty">Every book entry is in the statement.</div>'}
+    ${(o.bankOnly.length&&o.bookOnly.length)?`<div class="row" style="margin:12px 22px"><button id="bkMatchGo" disabled>Tick a line on each side to match them</button><label class="f inline" style="margin-left:4px" title="The ticked statement line(s) are shown as made up of the ticked book entries - the same way an automatic bulk match already does - instead of each book entry being its own separate category"><input type="checkbox" id="bkMatchBulk"> This is a bulk payment (show the book entries as its breakdown)</label></div>`:''}
     ${o.selfRev.length?`<details class="how" style="margin:14px 22px"><summary>Entered and cancelled in the book itself (${o.selfRev.length.toLocaleString()} pairs, no bank effect)</summary><div style="padding-left:0;max-width:none"><div class="scroll nb"><table class="t"><tr><th>Party</th><th>First entry</th><th>Cancelled by</th><th class="r">Amount</th></tr>${o.selfRev.slice(0,300).map(m=>`<tr><td class="w">${esc(m.a.p||m.a.r2)}</td><td class="w">${dstr(m.a.d)} ${esc(m.a.v)} (${m.a.t==='C'?'received':'paid'})</td><td class="w">${dstr(m.b.d)} ${esc(m.b.v)} (${m.b.t==='C'?'received':'paid'})</td><td class="r">${inr(m.a.a)}</td></tr>`).join('')}</table></div>${o.selfRev.length>300?'<div class="small">The first 300 are shown.</div>':''}</div></details>`:''}
     <details class="how" style="margin:14px 22px"><summary>Matched lines (${o.matched.length.toLocaleString()})</summary><div style="padding-left:0;max-width:none"><div class="scroll nb"><table class="t"><tr><th>Statement date</th><th>Statement narration</th><th>Book party</th><th>Book date</th><th>Basis</th><th class="r">Amount</th><th></th></tr>${o.matched.slice(0,300).map(m=>`<tr><td class="n">${dstr(m.xs[0].date)}</td><td class="w"><div class="clamp">${esc(m.xs[0].narr)}</div></td><td class="w">${esc(m.es[0].p||m.es[0].r2)}${m.es.length>1?` and ${m.es.length-1} more`:''}</td><td class="n">${dstr(m.es[0].d)}</td><td class="w">${esc(m.how)}</td><td class="r">${inr(m.xs.reduce((s,z)=>s+z.amt,0))}</td><td class="r">${m.manual?`<button data-bkundo="${esc(m.mkey)}" title="Undo this match">Undo</button>`:''}</td></tr>`).join('')}</table></div>${o.matched.length>300?'<div class="small">The first 300 are shown.</div>':''}</div></details></div>`; }
 function tBooks(el){ const r=B.res; const accts=r?r.accts:[];
@@ -3997,7 +4237,8 @@ function tBooks(el){ const r=B.res; const accts=r?r.accts:[];
       if(bkGo){ const refresh=()=>{ const nX=$$('.bkPickX:checked').length, nE=$$('.bkPickE:checked').length; bkGo.disabled=!(nX&&nE); bkGo.textContent=nX&&nE?'Match the '+(nX+nE)+' ticked line'+(nX+nE===1?'':'s'):'Tick a line on each side to match them'; };
         $$('.bkPickX,.bkPickE').forEach(c=>c.onchange=refresh); refresh();
         bkGo.onclick=async()=>{ const bankKeys=$$('.bkPickX:checked').map(c=>c.dataset.k), bookKeys=$$('.bkPickE:checked').map(c=>c.dataset.k); if(!bankKeys.length||!bookKeys.length) return;
-          B.bkManual=B.bkManual||{}; (B.bkManual[sel.label]=B.bkManual[sel.label]||[]).push({bankKeys,bookKeys}); await save(); analyse(); draw(); }; }
+          const bulkCb=document.getElementById('bkMatchBulk');
+          B.bkManual=B.bkManual||{}; (B.bkManual[sel.label]=B.bkManual[sel.label]||[]).push({bankKeys,bookKeys,bulk:!!(bulkCb&&bulkCb.checked)}); await save(); analyse(); draw(); }; }
       $$('[data-bkundo]').forEach(b=>b.onclick=async()=>{ const list=(B.bkManual||{})[sel.label]||[]; const i=list.findIndex(g=>g.bankKeys.join(',')+'>'+g.bookKeys.join(',')===b.dataset.bkundo); if(i>=0) list.splice(i,1); await save(); analyse(); draw(); }); } }
   $('#bkw').onchange=async e=>{ B.opts.bwin=+e.target.value; await save(); analyse(); draw(); };
   const upd=async(b,fn)=>{ fn(b); await saveBook(b); analyse(); draw(); };
@@ -4284,6 +4525,7 @@ function continuityOf(a){ const fs=(a.files||[]).filter(f=>f.from!=null&&f.to!=n
     if(f.from<=cur.to){ out.overlaps.push({a:cur,b:f}); if(f.to>cur.to) cur=f; continue; }
     const d=Math.round((f.opening-cur.closing)*100)/100; if(Math.abs(d)>0.011) out.gaps.push({a:cur,b:f,diff:d}); cur=f; }
   return out; }
+function gapNote(o,e){ if(!o||!o.a) return ''; const g=continuityOf(o.a).gaps.find(z=>e.d>=z.a.to&&e.d<=z.b.from); return g?'The statements do not cover this: one closes on '+dstr(g.a.to)+' and the next opens on '+dstr(g.b.from)+', and the balances do not join up (see the Intake check).':''; }
 function intakeCheck(r){ const items=[]; const add=(sev,what,how)=>items.push({sev,what,how}); const fn=f=>f.name.split('/').pop();
   for(const c of r.clients) for(const a of c.accts){ const ct=continuityOf(a);
     for(const g of ct.gaps) add('bad',a.label+': '+fn(g.a)+' closes at Rs '+inr(g.a.closing)+' on '+dstr(g.a.to)+', but the next statement, '+fn(g.b)+', opens at Rs '+inr(g.b.opening)+' on '+dstr(g.b.from)+'. The difference is Rs '+inr(Math.abs(g.diff))+'.','A statement, or part of one, between these dates is missing, or a line was misread. Compare with the bank.'); }
@@ -4506,7 +4748,7 @@ async function exportXlsx(btn){ const r=B.res; if(!r) return; btn.disabled=true;
         for(const m of o.matched) rows.push([o.label,'Matched',m.how,utc(m.xs[0].date),m.xs.map(z=>z.narr).join(' | ').slice(0,300),m.xs.reduce((s,z)=>s+(z.dir==='D'?z.amt:0),0)||null,m.xs.reduce((s,z)=>s+(z.dir==='C'?z.amt:0),0)||null,utc(m.es[0].d),m.es.map(e=>e.p).filter(Boolean).join(' | '),m.es.map(e=>e.v).join(' | '),m.es.map(e=>e.r).filter(Boolean).join(' | '),m.es.reduce((s,e)=>s+(e.t==='D'?e.a:0),0)||null,m.es.reduce((s,e)=>s+(e.t==='C'?e.a:0),0)||null]);
         for(const x of o.bankOnly) rows.push([o.label,'In the statement, not in the book','',utc(x.date),x.narr,x.dir==='D'?x.amt:null,x.dir==='C'?x.amt:null,null,'','','',null,null]);
         for(const x of (o.rePaid||[])) rows.push([o.label,'Returned by the bank and paid again, cancels out','',utc(x.date),x.narr,x.dir==='D'?x.amt:null,x.dir==='C'?x.amt:null,null,'','','',null,null]);
-        for(const e of o.bookOnly) rows.push([o.label,'In the book, not in the statement','',null,'',null,null,utc(e.d),e.p||e.r2,e.v,e.r,e.t==='D'?e.a:null,e.t==='C'?e.a:null]);
+        for(const e of o.bookOnly) rows.push([o.label,'In the book, not in the statement',gapNote(o,e),null,'',null,null,utc(e.d),e.p||e.r2,e.v,e.r,e.t==='D'?e.a:null,e.t==='C'?e.a:null]);
         for(const m of o.selfRev) rows.push([o.label,'Entered and cancelled in the book itself','',null,'',null,null,utc(m.a.d),m.a.p||m.a.r2,m.a.v+' / '+m.b.v,m.a.r,m.a.t==='D'?m.a.a:null,m.a.t==='C'?m.a.a:null]); }
       rows.forEach(rw=>{ rw.forEach((v,i)=>{ const cell=ws.getCell(row,2+i); cell.value=v; cell.font=F; cell.border=BOX; cell.alignment={vertical:'middle',wrapText:i===4||i===8||i===10}; if(i===3||i===7) cell.numFmt=DF; if(i===5||i===6||i===11||i===12) cell.numFmt=NF; }); ws.getRow(row).height=hgt([[rw[4],44],[rw[8],26],[rw[10],24]],20); row++; }); ws.autoFilter={from:{row:hr,column:2},to:{row:row-1,column:14}}; }
     const order=['Main Sheet','Bulk Entries','Summary','Queries','Bank Statement Status','Bank Book Reco']; order.forEach((nm,i)=>{ const w=wb.getWorksheet(nm); if(w) w.orderNo=i; });
