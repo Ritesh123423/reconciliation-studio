@@ -1,0 +1,13 @@
+{
+  "name": "reconciliation-studio",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Serves index.html behind an id/password prompt (HTTP Basic Auth). The tool itself is still 100% client-side - this server only gates who can load the page.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

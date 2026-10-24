@@ -1,11 +1,12 @@
 services:
   - type: web
     name: reconciliation-studio
-    runtime: static
-    buildCommand: ""
-    staticPublishPath: .
+    runtime: node
+    buildCommand: "npm install"
+    startCommand: "npm start"
     pullRequestPreviewsEnabled: false
-    routes:
-      - type: rewrite
-        source: /*
-        destination: /index.html
+    envVars:
+      - key: AUTH_USER
+        sync: false
+      - key: AUTH_PASS
+        sync: false
