@@ -2512,12 +2512,12 @@ function rExport(){
   const A=$('#app'); const R=state.results;
   A.innerHTML=hero('Output · Export','Download the','workpaper','','One Excel file that the client can read and verify. Totals and checks are Excel formulas.')+
   (R?'':'<div class="msg bad">Run the reconciliation first (Run and review).</div>')+
-  `<div class="grid g2"><div class="card"><div class="hd"><h3>Client report (Excel)</h3></div><div class="bd"><div class="small">Sheets, in reading order: Read Me, Summary, Things to check (the whole client list), Bank vs Books, Books vs Bank, Groups, Reversals, Compared as totals, Checks we ran and Files used. Every line has a status (Matched, Matched in a group, Cancelled nothing expected, Need to check) and a result in plain words. Totals are live formulas.</div><div class="row"><button class="primary" id="xl" ${R?'':'disabled'}>Download client report</button>${bankModel(S_()).groups.size>1?`<button id="xall" ${R?'':'disabled'}>Download one report per account</button>`:''}<span id="xmsg" class="small"></span></div><div class="prog hide" id="xprog"><i></i></div></div></div>
+  `<div class="grid g2"><div class="card"><div class="hd"><h3>Client report (Excel)</h3></div><div class="bd"><div class="small">Sheets, in reading order: Read Me, Summary, Things to check (the whole client list), Bank vs Books, Books vs Bank, Groups, Reversals, Compared as totals, Checks we ran and Files used. Every line has a status (Matched, Matched in a group, Cancelled nothing expected, Need to check) and a result in plain words. Totals are live formulas.</div><div class="row"><button class="primary" id="xl" ${R?'':'disabled'}>Download client report</button>${bankModel(S_()).groups.size>1?`<button id="xall" ${R?'':'disabled'}>Download one report per account</button><button id="xcomb" ${R?'':'disabled'}>Download combined report (all accounts)</button>`:''}<span id="xmsg" class="small"></span></div><div class="prog hide" id="xprog"><i></i></div></div></div>
   <div class="card"><div class="hd"><h3>Full workpaper (older layout)</h3></div><div class="bd"><div class="small">The earlier workbook: Combined with every test in its own column, one sheet per category, Bulk Entries, Reversals, Outside Period and Vendor List. Kept for anyone who prefers it.</div><div class="row"><label class="f inline"><input type="checkbox" id="ext" checked> Include one sheet per category (larger file)</label></div><div class="row"><button id="xold" ${R?'':'disabled'}>Download full workpaper</button><span id="xmsg2" class="small"></span></div></div></div>
   <div class="card"><div class="hd"><h3>CSV</h3></div><div class="bd"><div class="small">The Combined sheet as a plain CSV file, for use in other tools.</div><div class="row"><button id="csv" ${R?'':'disabled'}>Download Combined as CSV</button></div></div></div></div>
   <div class="card"><div class="hd"><h3>Your data</h3></div><div class="bd"><div class="small">Everything you uploaded, your saved layouts and the last result are stored in this browser only. <span id="store"></span></div><div class="row"><button id="clr" class="danger">Clear data...</button></div></div></div>`;
   storageInfo();
-  if(R){ $('#xl').onclick=exportXlsx; $('#xold').onclick=exportOldXlsx; $('#csv').onclick=exportCsv; const xa=$('#xall'); if(xa) xa.onclick=exportAllAccounts; }
+  if(R){ $('#xl').onclick=exportXlsx; $('#xold').onclick=exportOldXlsx; $('#csv').onclick=exportCsv; const xa=$('#xall'); if(xa) xa.onclick=exportAllAccounts; const xc=$('#xcomb'); if(xc) xc.onclick=exportCombined; }
   $('#clr').onclick=()=>window.clearDialog();
 }
 async function storageInfo(){ try{ const e=await navigator.storage.estimate(); const el=$('#store'); if(el) el.textContent='Browser storage used: '+(e.usage/1048576).toFixed(1)+' MB'+(e.quota?' of '+(e.quota/1073741824).toFixed(1)+' GB available.':'.'); }catch(e){} }
@@ -2533,6 +2533,10 @@ async function exportAllAccounts(){ const msg=$('#xmsg'),pr=$('#xprog'),bar=$('i
     msg.textContent=n?('Downloaded '+n+' workpaper(s).'):'Run the accounts first (Run and review, then Run all accounts).'; }
   catch(e){ msg.innerHTML='<div class="msg bad slim">Export failed: '+esc(e.message)+'</div>'; console.error(e); }
   $('#xall').disabled=false; $('#xl').disabled=false; setTimeout(()=>pr.classList.add('hide'),800); }
+async function exportCombined(){ const msg=$('#xmsg'),pr=$('#xprog'),bar=$('i',pr); pr.classList.remove('hide'); $('#xcomb').disabled=true; $('#xl').disabled=true; $('#xall').disabled=true;
+  try{ const buf=await buildCombinedWorkbook(S_(),(t,p)=>{ msg.textContent=t; bar.style.width=p+'%'; }); download(new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),(S_().entity||'Reconciliation').replace(/[^\w ]+/g,'').trim().replace(/\s+/g,'_')+'_Combined_All_Accounts.xlsx'); msg.textContent='Downloaded.'; }
+  catch(e){ msg.innerHTML='<div class="msg bad slim">'+esc(e.message)+'</div>'; console.error(e); }
+  $('#xcomb').disabled=false; $('#xl').disabled=false; $('#xall').disabled=false; setTimeout(()=>pr.classList.add('hide'),800); }
 async function exportOldXlsx(){ const msg=$('#xmsg2'),pr=$('#xprog'),bar=$('i',pr); pr.classList.remove('hide'); $('#xold').disabled=true;
   try{ const buf=await buildWorkbook(state.results,S_(),$('#ext').checked,(t,p)=>{ msg.textContent=t; bar.style.width=p+'%'; }); download(new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),(S_().entity||'Reconciliation').replace(/[^\w ]+/g,'').trim().replace(/\s+/g,'_')+(state.results.acctLabel&&bankModel(S_()).groups.size>1?'_'+String(state.results.acctLabel).replace(/[^\w]+/g,'_'):'')+'_Workpaper.xlsx'); msg.textContent='Downloaded.'; }
   catch(e){ msg.innerHTML='<div class="msg bad slim">Export failed: '+esc(e.message)+'. Try unticking the per category sheets.</div>'; console.error(e); }
@@ -3060,6 +3064,65 @@ async function buildWorkbook(R,S,withExt,progress){
   sm.views=[{showGridLines:false,state:'frozen',ySplit:6}];
   await tick_('Packing file...',95); const buf=await wb.xlsx.writeBuffer(); progress('Done',100); return buf;
 }
+/* ===== Combined workpaper: every bank account reconciled in this project, in one file ===== */
+async function buildCombinedWorkbook(S,progress){
+  const groups=bankModel(S).groups; const keys=[...groups.keys()];
+  const accts=[]; for(const k of keys){ const r=await DB.get('results',state.pid+'#'+k); if(r&&r.recs) accts.push({key:k,label:(groups.get(k)&&groups.get(k).account)||r.acctLabel||k,R:r}); }
+  if(!accts.length) throw new Error('Run the accounts first (Run and review, then Run all accounts).');
+  const wb=new ExcelJS.Workbook(); wb.creator='Reconciliation Studio';
+  const ENT=S.entity||'Bank vs Books Reconciliation';
+  const fill=a=>({type:'pattern',pattern:'solid',fgColor:{argb:a}});
+  function head(ws,title,note,ncols){ ws.getCell('B2').value=ENT; ws.getCell('B2').font=xfont(12,{bold:true}); ws.getCell('B3').value='Every bank account reconciled in this project, combined into one workbook.'; ws.getCell('B3').font=xfont(10); ws.getCell('B4').value=title; ws.getCell('B4').font=xfont(11,{bold:true}); const c=ws.getCell('B5'); c.value=note; c.font=xfont(9,{italic:true}); c.alignment=WRAP; ws.mergeCells(5,2,5,Math.min(ncols+1,12)); ws.getRow(5).height=28; }
+  function setup(ws,widths){ ws.properties.defaultRowHeight=13; ws.views=[{showGridLines:false}]; ws.pageSetup={orientation:'landscape',paperSize:9,fitToPage:true,fitToWidth:1,fitToHeight:0,margins:{left:.4,right:.4,top:.5,bottom:.5,header:.3,footer:.3}}; ws.headerFooter={oddFooter:'&CPage &P of &N'}; ws.getColumn(1).width=2; widths.forEach((w,i)=>{ ws.getColumn(i+2).width=w; }); }
+  function hdrRow(ws,r,labels){ const row=ws.getRow(r); labels.forEach((t,i)=>{ const c=row.getCell(i+2); c.value=t; c.font=xfont(9,{bold:true}); c.fill=fill('FFE7E6E6'); c.border=BORDER; c.alignment={wrapText:true,vertical:'middle',horizontal:'center'}; }); row.height=38; }
+  function styleRow(row,fmts,n){ for(let i=0;i<n;i++){ const c=row.getCell(i+2); c.font=xfont(9); c.border=BORDER; c.alignment=WRAP; if(fmts[i]) c.numFmt=fmts[i]; } }
+  const CCOLS=[['acct','Bank Account',18],...XCOLS]; const CC={}; CCOLS.forEach((c,i)=>{ CC[c[0]]=XLSX.utils.encode_col(i+1); });
+  const fmts=CCOLS.map(c=>c[3]||null);
+  function dataRow(ws,r,d,acctLabel){
+    const single=d.kind==='single'; const T=single?(d.bdate===d.kdate?'Yes':'No'):'-'; const days=(single&&T==='No')?Math.abs(d.kdate-d.bdate):null; const first=(single&&T==='No')?(d.kdate>d.bdate?'Bank first':'Books first'):null;
+    const diff=d.kind==='agg'?null:Math.round(((d.dp||0)-(d.wd||0)-((d.krec||0)-(d.kpay||0)))*100)/100;
+    const Uv=single?(Math.abs(diff)<0.005?'Yes':(Math.abs(diff)<=0.02?'Rs 0.02 off':'No')):'-';
+    const vals={no:d.no,tier:d.tier||null,cat:d.cat,rule:methodOf(d),vtype:d.vtype||null,bacct:d.bacct||null,why:d.why,issue:d.issue,brow:d.brow,bdate:dayDate(d.bdate),ref:d.ref,wd:d.wd,dp:d.dp,bname:d.bname,krow:d.krow==null?null:String(d.krow),vch:d.vch==null?null:String(d.vch),kdate:dayDate(d.kdate),kpay:d.kpay,krec:d.krec,kcode:d.kcode==null?null:String(d.kcode),kname:d.kname,mname:d.mname,S:d.S,V:d.V,W:d.W,alt:d.alt||null,grp:d.grp,file:d.file,frow:d.frow,narr:d.narr};
+    const v=[acctLabel]; for(const c of XCOLS){ const k=c[0]; let x=vals[k];
+      if(k==='T') x=single?T:'-'; else if(k==='days') x=single?(days==null?'':days):'-'; else if(k==='first') x=single?(first==null?'':first):'-'; else if(k==='U') x=single?Uv:'-'; else if(k==='diff') x=d.kind==='agg'?null:diff;
+      v.push(x==null?null:x); }
+    const row=ws.getRow(r); v.forEach((x,i)=>{ if(x!=null) row.getCell(i+2).value=x; }); styleRow(row,fmts,v.length);
+  }
+  const tick_=async(t,p)=>{ progress(t,p); await new Promise(r=>setTimeout(r,0)); };
+  // ---- Read Me
+  const rm=wb.addWorksheet('Read Me'); setup(rm,[30,100]);
+  { rm.getCell('A1').value=ENT+' - Combined workpaper'; rm.getCell('A1').font=xfont(12,{bold:true});
+    const lines=['This file combines every bank account reconciled in this project into one workbook, so nothing has to be opened account by account.',
+      'Summary: one row per bank account, with the lines, the match counts and the movement for each. Combined: every line of every account in one sheet, with Bank Account as the first column - filter or sort on it to see one account at a time.',
+      'Each account was reconciled on its own (an account is never matched against another account\'s bank book), and the figures here are exactly what that account\'s own run produced - this file only brings them together, it does not re-run anything.',
+      'For the full workpaper of one account on its own, with its own Read Me, Data Check and category sheets, use "Download client report" or "Download full workpaper" after selecting that account on Run and review.'];
+    let r=3; for(const t of lines){ const c=rm.getCell(r,1); c.value=t; c.font=xfont(9); c.alignment=WRAP; rm.mergeCells(r,1,r,2); rm.getRow(r).height=Math.max(14,13*Math.ceil(t.length/118)); r++; }
+    r++; rm.getCell(r,1).value='Accounts in this file'; rm.getCell(r,1).font=xfont(9,{bold:true}); r++;
+    for(const a of accts){ rm.getCell(r,1).value=a.label; rm.getCell(r,1).font=xfont(9); rm.getCell(r,2).value=a.R.recs.length.toLocaleString()+' line(s)'; rm.getCell(r,2).font=xfont(9); r++; } }
+  // ---- Summary
+  await tick_('Writing Summary...',15);
+  const sm=wb.addWorksheet('Summary'); setup(sm,[26,14,14,14,16,16,16,16]);
+  sm.getCell('B2').value=ENT+' - Summary of every account'; sm.getCell('B2').font=xfont(12,{bold:true}); sm.getRow(2).height=20;
+  const shdr=['Bank account','Lines','Absolute match','Mismatch','Bank withdrawals (Rs)','Bank deposits (Rs)','Books payments (Rs)','Books receipts (Rs)'];
+  shdr.forEach((t,i)=>{ const c=sm.getCell(4,i+2); c.value=t; c.font=xfont(9,{bold:true}); c.fill=fill('FFE7E6E6'); c.border=BORDER; c.alignment={wrapText:true,vertical:'middle',horizontal:'center'}; }); sm.getRow(4).height=30;
+  let sr=5; const tot={n:0,abs:0,mis:0,wd:0,dp:0,kp:0,kr:0};
+  for(const a of accts){ const recs=a.R.recs; const t=sums(recs); const g={n:0,wd:0,dp:0,kp:0,kr:0}; Object.values(t).forEach(x=>{ for(const k in g) g[k]+=x[k]; });
+    const abs=(t['Absolute match']||{}).n||0, mis=(t['Mismatch']||{}).n||0;
+    const row=sm.getRow(sr); const v=[a.label,recs.length,abs,mis,a.R.bankWd||0,a.R.bankDp||0,g.kp,g.kr];
+    v.forEach((x,i)=>{ const c=row.getCell(i+2); c.value=x; c.font=xfont(9); c.border=BORDER; c.alignment=WRAP; if(i>=4) c.numFmt='#,##0.00'; else if(i>0) c.numFmt='#,##0'; });
+    tot.n+=recs.length; tot.abs+=abs; tot.mis+=mis; tot.wd+=a.R.bankWd||0; tot.dp+=a.R.bankDp||0; tot.kp+=g.kp; tot.kr+=g.kr; sr++; }
+  { const row=sm.getRow(sr); const v=['Total',tot.n,tot.abs,tot.mis,tot.wd,tot.dp,tot.kp,tot.kr];
+    v.forEach((x,i)=>{ const c=row.getCell(i+2); c.value=x; c.font=xfont(9,{bold:true}); c.fill=fill('FFF2F2F2'); c.border=BORDER; if(i>=4) c.numFmt='#,##0.00'; else if(i>0) c.numFmt='#,##0'; }); }
+  sm.views=[{showGridLines:false,state:'frozen',ySplit:4}];
+  // ---- Combined
+  await tick_('Writing Combined...',30);
+  const cb=wb.addWorksheet('Combined'); setup(cb,CCOLS.map(c=>c[2]));
+  head(cb,'Combined - every line of every account',`${accts.length} account(s), ${accts.reduce((a,x)=>a+x.R.recs.length,0).toLocaleString()} line(s) in all. Filter or sort column B (Bank Account) to see one account at a time.`,CCOLS.length);
+  hdrRow(cb,7,CCOLS.map(c=>c[1]));
+  let cr=8,pc=30; for(const a of accts){ for(const d of a.R.recs){ dataRow(cb,cr,d,a.label); cr++; } pc=Math.min(90,pc+Math.round(55/accts.length)); await tick_('Writing Combined...',pc); }
+  const cLast=Math.max(8,cr-1); cb.autoFilter={from:{row:7,column:2},to:{row:cLast,column:CCOLS.length+1}}; cb.views=[{showGridLines:false,state:'frozen',xSplit:2,ySplit:7}];
+  await tick_('Packing file...',95); const buf=await wb.xlsx.writeBuffer(); progress('Done',100); return buf;
+}
 
 /* ===== Client report: the workbook of Part E7, with the statuses, results and wording of E5 and E6 ===== */
 const SW={ids:'FFD9D9D9',bank:'FFB8CCE4',book:'FFD4E3BC',cmp:'FFE3D3C2',need:'FFF6E0DA',bankT:'FFEDF3F8',bookT:'FFF0F4EA',ink:'FF1F3350',rule:'FF7A8AA5',thin:'FFE4E4E4',sM:'FFDCE6D5',sG:'FFDDE6EF',sC:'FFE8E4DC'};
@@ -3313,7 +3376,7 @@ async function buildSpecWorkbook(R,S,progress){
     ckRow(banned.length?'fail':'pass','Search for words a reader outside the firm does not use',banned.length?banned.length+' cell(s) still hold such a word, for example '+banned.slice(0,5).join(', ')+'.':'The finished file, hidden columns included, was searched for the words the rules ban. None is left.'); }
   await P_('Packing file...',96); const buf=await wb.xlsx.writeBuffer(); progress('Done',100); return buf; }
 
-window.__app={buildSpec:()=>buildSpecWorkbook,expandInputs,droppedFiles,state,render,buildChecks,analyse,CK,openProject,newProject,DB,extract,gather,doRun,toDay,toNum,automap,exportXlsx,setStep,runSelfTest,buildRef:()=>buildWorkbook};
+window.__app={buildSpec:()=>buildSpecWorkbook,buildCombined:()=>buildCombinedWorkbook,expandInputs,droppedFiles,state,render,buildChecks,analyse,CK,openProject,newProject,DB,extract,gather,doRun,toDay,toNum,automap,exportXlsx,setStep,runSelfTest,buildRef:()=>buildWorkbook};
 
 /* ---------- init ---------- */
 async function init(){
