@@ -1276,7 +1276,7 @@ const RE = (function(){
 const DAY=86400000;
 const GENREF=new Set(['NEFT','RTGS','IMPS','UPI','CASH','TR','FT','CHQ','NAN','','0','NONE','CHEQUE','DD','NA','N/A','TRANSFER']);
 function normRef(v){ if(v==null) return ''; let s=String(v).trim().toUpperCase(); if(s==='NAN'||s==='NONE') return ''; s=s.replace(/\s+/g,''); if(/^\d+$/.test(s)) s=s.replace(/^0+/,''); return s; }
-function usable(k){ return !GENREF.has(k) && k.length>=5; }
+function usable(k){ return !GENREF.has(k) && k.length>=5 && /\d/.test(k); }
 const cents=x=>Math.round(x*100);
 const fmtD=d=>{ if(d==null) return ''; const t=new Date(d*DAY); const m=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][t.getUTCMonth()]; return String(t.getUTCDate()).padStart(2,'0')+'-'+m+'-'+t.getUTCFullYear(); };
 const money=x=>'Rs '+Number(x).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -1339,7 +1339,13 @@ const RETKW=/CHQ DEP RET(?!\s*CHGS)|CHQ RET(?!URN CHGS)|I\/W CHQ RET|CHEQUE DEPO
 
 /* ---------- main ---------- */
 function run(bankIn,booksIn,master,S,progress){
-  S=Object.assign({clearWin:10,bulkWinNo:7,bulkWinParty:21,compSpan:2,comboCap:18,comboMem:7,bulkMin:500,altWin:7,revWin:45,bulkWin:30,dateWin:3,tol:0.02,mismatchLimit:10,vendorRe:'^P\\d+$',customerRe:'^\\d{5,6}$',suspense:'SUS,000000',noMaster:false},S||{});
+  S=Object.assign({clearWin:10,bulkWinNo:7,bulkWinParty:21,compSpan:2,comboCap:18,comboMem:7,bulkMin:500,altWin:7,revWin:45,bulkWin:30,dateWin:3,tol:0.02,mismatchLimit:10,vendorRe:'^P\\d+$',customerRe:'^\\d{5,6}$',suspense:'SUS,000000',noMaster:false,ownAccounts:[]},S||{});
+  // the company's own account numbers (this account plus every other account in the same upload) - a narration naming one of
+  // them, where the book party also names it, is the company's own name for itself and agrees as a party, even though neither
+  // side is a vendor or customer name
+  const ownAccts=(S.ownAccounts||[]).map(a=>String(a).replace(/\D/g,'')).filter(a=>a.length>=6);
+  const digitsOnly=s=>String(s==null?'':s).replace(/\D/g,'');
+  const ownAcctMatch=(narr,party)=>{ const bn=digitsOnly(narr), pn=digitsOnly(party); for(const a of ownAccts) if(bn.includes(a)&&pn.includes(a)) return a; return null; };
   const P=progress||(()=>{});
   // The default code patterns follow the Davangere books (P-codes are vendors, 5 or 6 digits are customers).
   // When the books use another scheme (for example VEND_000123 and CUST_000456), the patterns are read from the codes themselves.
@@ -1354,6 +1360,8 @@ function run(bankIn,booksIn,master,S,progress){
   const mkBankKeys=b=>{ const ks=new Set(); const k=normRef(b.ref); if(usable(k)) ks.add(k); if(!usable(k)){ (b.narr.match(/[A-Za-z0-9]{6,}/g)||[]).forEach(t=>{ if(!/\d/.test(t)) return; if(t.length<9&&/^\d+$/.test(t)&&(/^(0[1-9]|[12]\d|3[01])(0[1-9]|1[0-2])20\d\d$/.test(t)||/^20\d\d(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])$/.test(t))) return; ks.add(normRef(t)); }); } { // cheque number: "CLG/<name>/<chq no>/..." deposits and "REJECT:<chq no>:reason" returns carry the cheque number
       const pp=b.narr.split('/'); if(/^CLG$/i.test((pp[0]||'').trim())&&pp[2]&&/^\d{3,8}$/.test(pp[2].trim())) ks.add('CHQ:'+(+pp[2].trim()));
       const rj=/^REJECT:(\d{3,8}):/i.exec(b.narr.trim()); if(rj) ks.add('CHQ:'+(+rj[1])); }
+    { // the bank's own reference field is sometimes a zero-padded running serial, not a UTR - too short to be a reference on its own once the padding is stripped (defect 2's exception), but still a real link to a book cheque number of the same value
+      const rs=String(b.ref==null?'':b.ref).trim(); if(/^\d+$/.test(rs)){ const n=rs.replace(/^0+/,''); if(n&&n.length<5) ks.add('CHQ:'+(+n)); } }
     return [...ks]; };
   const dateLike=t=>/^(0[1-9]|[12]\d|3[01])(0[1-9]|1[0-2])(20)?\d\d$/.test(t)||/^20\d\d(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])$/.test(t);
   const digitRuns=(txt)=>{ const o=[]; for(const m of String(txt==null?'':txt).match(/\d{5,}/g)||[]){ if(dateLike(m)) continue; const n=normRef(m); if(usable(n)) o.push(n); } return o; };
@@ -1371,14 +1379,16 @@ function run(bankIn,booksIn,master,S,progress){
   const CW=S.clearWin;
   const digitsOf=v=>String(v==null?'':v).replace(/\D/g,'').replace(/^0+/,'');
   const ptoks=t=>toks(t).filter(x=>x.length>3&&!GEN.has(x));
-  for(const b of bn){ b._pt=new Set(ptoks(b.narr)); b._let=b.narr.toUpperCase().replace(/[^A-Z]/g,''); b._rd=digitsOf(b.ref).replace(/^0+/,''); b._runs=((String(b.refStr||'')+' '+b.narr).match(/\d{5,}/g)||[]).map(x=>x.replace(/^0+/,'')).filter(Boolean); }
-  for(const k of bk){ k._pt=ptoks(k.party); k._rd=[digitsOf(k.chq),digitsOf(k.ref2)].map(x=>x.replace(/^0+/,'')); k._ft=[k.chq,k.ref2].map(x=>String(x==null?'':x).replace(/\s/g,'')); } // leading zeros stripped so an all-zero field becomes '' and fails the length test below; the party name is not searched here either
-  // the reference agrees: digits only, leading zeros dropped, five or more characters, one ends with or equals the other; or a run of five or more digits of the bank reference or narration sits in the book reference or remark. The voucher number is never a reference.
+  for(const b of bn){ b._pt=new Set(ptoks(b.narr)); b._let=b.narr.toUpperCase().replace(/[^A-Z]/g,''); b._rd=digitsOf(b.ref).replace(/^0+/,''); }
+  for(const k of bk){ k._pt=ptoks(k.party); k._rd=[digitsOf(k.chq),digitsOf(k.ref2)].map(x=>x.replace(/^0+/,'')); } // leading zeros stripped so an all-zero field becomes '' and fails the length test below
+  // the reference agrees: digits only, leading zeros dropped, five or more characters, one ends with or equals the other. A free-text remark that happens to echo a digit string, or a cheque number too short to be a reference, is never credited here - those are handled on their own, later: the whole-period reference-in-the-books pass, and the dedicated cheque-number key above. The voucher number is never a reference.
   const refExact=(b,k)=>b.keys.length>0&&k.keys.some(x=>b.keys.includes(x));
-  const refAgree=(b,k)=>{ if(refExact(b,k)) return true; for(const kd of k._rd){ if(b._rd.length>=5&&kd.length>=5&&(b._rd.endsWith(kd)||kd.endsWith(b._rd))) return true; } for(const r of b._runs) for(const f of k._ft) if(f.indexOf(r)>=0) return true; return false; };
+  const sharedKeys=(b,k)=>b.keys.filter(x=>k.keys.includes(x));
+  const refChqOnly=(b,k)=>{ const sh=sharedKeys(b,k); return sh.length>0&&sh.every(x=>x.startsWith('CHQ:')); };
+  const refAgree=(b,k)=>{ if(refExact(b,k)) return true; for(const kd of k._rd){ if(b._rd.length>=5&&kd.length>=5&&(b._rd.endsWith(kd)||kd.endsWith(b._rd))) return true; } return false; };
   // the party agrees: after the stop words the token sets meet, or a book token of five or more letters sits inside the bank narration reduced to letters
   const partyAgree=(b,k)=>{ if(!k._pt.length) return false; for(const t of k._pt) if(b._pt.has(t)) return true; for(const t of k._pt) if(t.length>=5&&b._let.indexOf(t)>=0) return true; return false; };
-  const howFor=(b,k)=>{ if(refExact(b,k)) return 'P1 Reference+Amount'; if(refAgree(b,k)) return 'P1b Reference (partial)+Amount'; const gp=Math.abs(b.date-k.date); return gp===0?'P2 Date+Amount':(gp<=3?'P3 Amount, date within 3 days':'P4 Amount, dated '+gp+' days apart'); };
+  const howFor=(b,k)=>{ if(refExact(b,k)) return refChqOnly(b,k)?'P1 Cheque number+Amount':'P1 Reference+Amount'; if(refAgree(b,k)) return 'P1b Reference (partial)+Amount'; const gp=Math.abs(b.date-k.date); return gp===0?'P2 Date+Amount':(gp<=3?'P3 Amount, date within 3 days':'P4 Amount, dated '+gp+' days apart'); };
   const rankPair=(b,k)=>[refAgree(b,k)?0:1,partyAgree(b,k)?0:1,Math.abs(b.date-k.date),b.i,k.j,b,k];
   const takePairs=(pairs)=>{ pairs.sort((x,y)=>x[0]-y[0]||x[1]-y[1]||x[2]-y[2]||x[3]-y[3]||x[4]-y[4]); for(const q of pairs){ const b=q[5],k=q[6]; if(b.m<0&&k.m<0&&b.gid<0&&k.gid<0) link(b,k,howFor(b,k)); } };
   const byKey=new Map(); for(const k of inPeriod) for(const key of k.keys){ if(!byKey.has(key)) byKey.set(key,[]); byKey.get(key).push(k); }
@@ -1659,7 +1669,7 @@ function run(bankIn,booksIn,master,S,progress){
     for(const b of bn){ if(b.m>=0||b.gid>=0) continue; const runs=new Set([...digitRunsOf(b.refStr),...digitRunsOf(b.narr)]); const cands=new Set();
       for(const r of runs) for(const k of (bookIdx.get(r)||[])) if(k.m<0&&k.gid<0) cands.add(k);
       if(cands.size!==1) continue; const k=[...cands][0];
-      if(k.amt===b.amt) link(b,k,'Reference quoted in the Books entry'); else refFoundOf.set(b.i,k); } }
+      if(k.amt===b.amt) link(b,k,'Reference quoted in the Books entry'); else { refFoundOf.set(b.i,k); g++; b.gid=g; k.gid=g; } } }
   // ======== classification
   P('Classifying');
   // ---- plain-language explanation of every group
@@ -1722,17 +1732,19 @@ function run(bankIn,booksIn,master,S,progress){
         const mname=(master&&master.size&&master.has(code))?master.get(code):null; d.mname=mname;
     // ref check
     if(b.how==='P1 Reference+Amount'||b.how==='Re-presented cheque') d.S='Yes';
+    else if(b.how==='P1 Cheque number+Amount') d.S='Cheque number'; // a running serial too short to be a reference once the padding is stripped, but a real cheque number match - a different conversation with the client from a reference agreeing
     else if(b.how==='P1b Reference (partial)+Amount') d.S='Keyed short'; // the reference is the same instrument, just typed with digits missing from one end - a different conversation with the client from "differs"
     else if(!b.keys.length&&!b.refStr) d.S='None on bank';
-    else { const ok=k.keys.some(x=>b.keys.includes(x)); d.S=ok?'Yes':((!k.keys.length)?'Not in Books':'Differs'); }
+    else { const ok=k.keys.some(x=>b.keys.includes(x)); d.S=ok?(refChqOnly(b,k)?'Cheque number':'Yes'):((!k.keys.length)?'Not in Books':'Differs'); }
     d.T=b.date===k.date?'Yes':'No';
     const diff=b.amt-k.amt; d.U=Math.abs(diff)===0?'Yes':(Math.abs(diff)<=2?'Rs 0.02 off':'No');
     const ci=codeInfo(code,bnm); d.V=ci;
     // names
     let bname=nm;
     if(!bname&&/^UPI-/i.test(b.narr)){ const pp=b.narr.split('-'); if(pp.length>2&&pp[2].includes('@')){ const v=pp[2].split('@')[0].replace(/\d+/g,''); if(v.length>=4&&bnm&&sameName(v,bnm)) bname=pp[2].split('@')[0]+' (UPI ID)'; } }
+    const ownAcct=(!bname&&bnm)?ownAcctMatch(b.narr,bnm):null; if(!bname&&ownAcct) bname='Account '+ownAcct;
     d.bname=bname||null;
-    let nb=null; if(bname&&bnm) nb=sameName(nm||bname.replace(' (UPI ID)',''),bnm); if(nb===false&&mname&&nm&&sameName(nm,mname)) nb=true;
+    let nb=null; if(bname&&bnm){ nb=ownAcct?true:sameName(nm||bname.replace(' (UPI ID)',''),bnm); } if(nb===false&&mname&&nm&&sameName(nm,mname)) nb=true;
     let vm=null; if(mname) vm=sameName(bnm,mname);
     if(!bname) d.W='Not on bank'; else if(nb===false||vm===false) d.W='No'; else d.W='Yes';
     d.nameWhy=(d.W==='No')?((nb===false)?'bank':'master'):'';
@@ -2589,6 +2601,16 @@ function runSelfTest(){
     T('Bank return found months later (80 days)',cat2(res,10)==='Mapped - Reversal'&&cat2(res,11)==='Mapped - Reversal',cat2(res,10)+' | '+cat2(res,11)); }
   { const res=run2([[D(2026,4,1),'X','',100],[D(2026,6,30),'PAD','',17]],[[D(2026,4,1),'RV1','PARTY ONE','C1','','',100],[D(2026,4,4),'JV1','SUSPENSE PARTY','C2','','',10000],[D(2026,5,1),'JV2','SUSPENSE PARTY','C2','','',-4000],[D(2026,6,1),'JV3','SUSPENSE PARTY','C2','','',-6000]]);
     const bo=res.recs.filter(d=>d.kind==='bkonly'); T('One Books entry clearing against several of the opposite direction',bo.length===3&&bo.every(d=>/offsets|clear each other/.test(d.why||'')),bo.map(d=>d.why).join(' | ')); }
+  { const res=run2([[D(2026,4,10),'UPI-234567890123-TEST PAYMENT','',3000],[D(2026,6,30),'PAD','',17]],[[D(2026,4,10),'RV1','SUSPENSE','SUS','','note 234567890123 here',6000]]);
+    const d=res.recs.find(x=>x.brow===10); T('Reference found in a still-open Books entry, amount differs: named as a pair, not two missing entries',d&&d.cat==='Mapped - Same reference, different amount'&&d.krow===2,d?d.cat+' / krow '+d.krow:''); }
+  { const res=run2([[D(2026,4,10),'NEFT CR-XYZ','SUSPENSE',500],[D(2026,6,30),'PAD','',17]],[[D(2026,4,10),'RV1','PARTY ONE','C1','SUSPENSE','',500]]);
+    const d=res.recs.find(x=>x.brow===10); T('A word with no digit in it (SUSPENSE) is never a reference, even if it happens to match on both sides',d&&d.S!=='Yes',d?d.S:''); }
+  { const res=run2([[D(2026,4,10),'FT-SOMETHING','000006',2000],[D(2026,6,30),'PAD','',17]],[[D(2026,4,10),'RV1','PARTY X','C1','000006','',2000]]);
+    const d=res.recs.find(x=>x.brow===10); T('A cheque number too short to be a reference gets its own result, not "reference agrees" or "differs"',d&&d.S==='Cheque number',d?d.S:''); }
+  { const res=run2([[D(2026,7,15),'NEFT Cr-PARTY','REF12345',1000],[D(2026,6,30),'PAD','',17]],[[D(2026,7,13),'V1','OTHER','C1','REF12345','',1000],[D(2026,7,15),'V2','OTHER2','C2','','',1000]]);
+    const d=res.recs.find(x=>x.brow===10); T('A same day candidate is taken over a reference agreeing two days away - reference ranks inside a tier, it never widens one',d&&d.krow===3,d?'krow '+d.krow:''); }
+  { const res=run2([[D(2026,4,10),'A2AOWN01 - 50200099999999 - OWN TRANSFER','',500000],[D(2026,6,30),'PAD','',17]],[[D(2026,4,10),'BB1','HDFC BANK- 50200099999999','LEDGER','','',500000]],{ownAccounts:['50200099999999']});
+    const d=res.recs.find(x=>x.brow===10); T('The company\'s own account number in the narration and in the Books party name agrees as a name',d&&d.W==='Yes'&&/50200099999999/.test(d.bname||''),d?d.W+' / '+d.bname:''); }
   }
   }catch(e){ T('Self-test ran without error',false,e.message); }
   const pass=out.filter(x=>x[1]).length;
@@ -2888,14 +2910,15 @@ function gather(){
   for(const f of state.files) if(f.role==='master'&&mapped(f)) extract(f,S).rows.forEach(r=>master.set(r.code,r.name));
   const xBank=[]; for(const g2 of C.B.groups.values()) if(g2.key!==C.B.sel){ try{ proofOf(g2).mg.lines.forEach(l=>xBank.push(Object.assign({},l,{acct:g2.account||g2.key}))); }catch(e){} }
   const xBooks=[]; for(const x of C.K.items) if(x.a.bf.status==='other-acct') xBooks.push(...x.a.ex.rows.map(r=>(S.bookSign==='auto'&&C.signInfo&&C.signInfo.flip)?Object.assign({},r,{amt:-r.amt}):r));
-  return {bank:C.P?C.P.mg.lines:[],books,master,xBank,xBooks,C};
+  const ownAccounts=[...new Set([...C.B.groups.values()].map(g2=>g2.account).filter(Boolean))];
+  return {bank:C.P?C.P.mg.lines:[],books,master,xBank,xBooks,ownAccounts,C};
 }
 async function doRun(progress,acctKey){
   const S=S_(); if(acctKey!==undefined){ S.acctKey=acctKey; S.bookAcctKey=''; } {
     progress('Reading lines',10); await tick();
     RE.setGeneric(S.generic);
     const g=gather(); if(!g.bank.length) throw new Error('No usable lines were read from the bank statement. Check the date and amount columns.'); if(!g.books.length) throw new Error('No usable lines were read from the bank book. Check the date and amount columns.');
-    let p=10; const res=RE.run(g.bank,g.books,g.master,{dateWin:S.dateWin,tol:S.tol,mismatchLimit:S.mismatchLimit,clearWin:S.clearWin==null?10:S.clearWin,bulkWinNo:S.bulkWinNo==null?7:S.bulkWinNo,bulkWinParty:S.bulkWinParty==null?21:S.bulkWinParty,compSpan:S.compSpan==null?2:S.compSpan,comboCap:S.comboCap==null?18:S.comboCap,comboMem:S.comboMem==null?7:S.comboMem,bulkMin:S.bulkMin==null?500:S.bulkMin,altWin:S.altWin==null?7:S.altWin,revWin:S.revWin==null?45:S.revWin,bulkWin:S.bulkWin==null?30:S.bulkWin,vendorRe:S.vendorRe,customerRe:S.customerRe,suspense:S.suspense,noMaster:!g.master.size,xBank:g.xBank,xBooks:g.xBooks},t=>{ p=Math.min(90,p+12); progress(t,p); });
+    let p=10; const res=RE.run(g.bank,g.books,g.master,{dateWin:S.dateWin,tol:S.tol,mismatchLimit:S.mismatchLimit,clearWin:S.clearWin==null?10:S.clearWin,bulkWinNo:S.bulkWinNo==null?7:S.bulkWinNo,bulkWinParty:S.bulkWinParty==null?21:S.bulkWinParty,compSpan:S.compSpan==null?2:S.compSpan,comboCap:S.comboCap==null?18:S.comboCap,comboMem:S.comboMem==null?7:S.comboMem,bulkMin:S.bulkMin==null?500:S.bulkMin,altWin:S.altWin==null?7:S.altWin,revWin:S.revWin==null?45:S.revWin,bulkWin:S.bulkWin==null?30:S.bulkWin,vendorRe:S.vendorRe,customerRe:S.customerRe,suspense:S.suspense,noMaster:!g.master.size,xBank:g.xBank,xBooks:g.xBooks,ownAccounts:g.ownAccounts},t=>{ p=Math.min(90,p+12); progress(t,p); });
     await tick(); progress('Saving',95);
     const bankWd=g.bank.filter(x=>x.amt<0).reduce((s,x)=>s+x.amt,0),bankDp=g.bank.filter(x=>x.amt>0).reduce((s,x)=>s+x.amt,0);
     const t=res.tie,rb=res.recs.filter(d=>d.brow!=null); let cw=0,cd=0; for(const d of rb){ cw+=IN.cents(d.wd||0); cd+=IN.cents(d.dp||0); }
@@ -3128,7 +3151,7 @@ async function buildCombinedWorkbook(S,progress){
 const SW={ids:'FFD9D9D9',bank:'FFB8CCE4',book:'FFD4E3BC',cmp:'FFE3D3C2',need:'FFF6E0DA',bankT:'FFEDF3F8',bookT:'FFF0F4EA',ink:'FF1F3350',rule:'FF7A8AA5',thin:'FFE4E4E4',sM:'FFDCE6D5',sG:'FFDDE6EF',sC:'FFE8E4DC'};
 const SW_MONEY='#,##0.00;(#,##0.00);"-"', SW_DATE='dd-mmm-yyyy';
 const SW_STATUS=['Matched','Matched in a group','Cancelled, nothing expected','Need to check'];
-const SW_RESULTS=[['Date, amount and reference all the same','Matched'],['Date, amount and party name the same','Matched'],['Date and amount the same','Matched'],['Amount and reference the same, book entry later than the bank statement','Matched'],['Amount and reference the same, book entry earlier than the bank statement','Matched'],['Amount the same, book entry later than the bank statement','Matched'],['Amount the same, book entry earlier than the bank statement','Matched'],['One bank entry equals several book entries','Matched in a group'],['Several bank entries equal one book entry','Matched in a group'],['The day total is the same on both sides','Matched in a group'],['Cheque deposit, checked as a total not one by one','Matched in a group'],['Cancelled by an opposite entry in the books','Cancelled, nothing expected'],['One of a set on the same day that comes to zero','Cancelled, nothing expected'],['Transfer between the two own bank accounts','Cancelled, nothing expected'],['The bank reversed its own entry','Cancelled, nothing expected'],['Put against the wrong bank account in the books','Need to check'],['Amount differs by a few rupees','Need to check'],['Same reference, different amount','Need to check'],['Same amount but a different month','Need to check'],['Not found','Need to check']];
+const SW_RESULTS=[['Date, amount and reference all the same','Matched'],['Date, amount and cheque number the same','Matched'],['Date, amount and party name the same','Matched'],['Date and amount the same','Matched'],['Amount and reference the same, book entry later than the bank statement','Matched'],['Amount and reference the same, book entry earlier than the bank statement','Matched'],['Amount and cheque number the same, book entry later than the bank statement','Matched'],['Amount and cheque number the same, book entry earlier than the bank statement','Matched'],['Amount the same, book entry later than the bank statement','Matched'],['Amount the same, book entry earlier than the bank statement','Matched'],['One bank entry equals several book entries','Matched in a group'],['Several bank entries equal one book entry','Matched in a group'],['The day total is the same on both sides','Matched in a group'],['Cheque deposit, checked as a total not one by one','Matched in a group'],['Cancelled by an opposite entry in the books','Cancelled, nothing expected'],['One of a set on the same day that comes to zero','Cancelled, nothing expected'],['Transfer between the two own bank accounts','Cancelled, nothing expected'],['The bank reversed its own entry','Cancelled, nothing expected'],['Put against the wrong bank account in the books','Need to check'],['Amount differs by a few rupees','Need to check'],['Same reference, different amount','Need to check'],['Same amount but a different month','Need to check'],['Not found','Need to check']];
 const SW_BANNED=/\b(tiers?|categor(y|ies)|populations?|reconciled|corroborated|untraced|clearing window|paisa|line for line)\b/i;
 function swPlain(t){ if(typeof t!=='string') return t; return t.replace(/\bline by line\b/gi,'one by one').replace(/\bline for line\b/gi,'one by one').replace(/\buntraced\b/gi,'not found').replace(/\bcorroborated\b/gi,'supported by other evidence').replace(/\bpopulations?\b/gi,'set of entries').replace(/\breconciled\b/gi,'agreed').replace(/\bclearing window\b/gi,'normal clearing time').replace(/\btiers?\b/gi,'level').replace(/\bcategories\b/gi,'results').replace(/\bcategory\b/gi,'result').replace(/\bpaisa\b/gi,'exactly'); }
 const swM=x=>Number(x||0).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -3144,16 +3167,16 @@ function swClassify(d,S,ctx){
   const dateSent=gap==null?'':(gap===0?'The date is the same on both sides.':(gap<0?'The bank statement is '+days+' days later than the bank book, which is normal clearing time.':'The bank book is '+days+' days later than the bank statement, which means it was written up after the money moved.'));
   const rv=(d.vtype==='Reversal entry');
   if(d.kind==='single'&&d.krow!=null){
-    const refYes=(d.S==='Yes'||d.S==='Keyed short'); o.refSame=refYes?'Yes':(d.S==='None on bank'?'-':'No'); const nameYes=(d.W==='Yes'&&d.bname); const same=(gap===0);
-    const f=['amount']; if(same) f.push('date'); if(refYes) f.push('reference'); if(nameYes) f.push('party name'); o.matched=f.map((x,i)=>i?x:x.charAt(0).toUpperCase()+x.slice(1)).join(', ');
+    const refYes=(d.S==='Yes'||d.S==='Keyed short'); const chqYes=(d.S==='Cheque number'); o.refSame=refYes?'Yes':(chqYes?'Cheque number':(d.S==='None on bank'?'-':'No')); const nameYes=(d.W==='Yes'&&d.bname); const same=(gap===0);
+    const f=['amount']; if(same) f.push('date'); if(refYes) f.push('reference'); else if(chqYes) f.push('cheque number'); if(nameYes) f.push('party name'); o.matched=f.map((x,i)=>i?x:x.charAt(0).toUpperCase()+x.slice(1)).join(', ');
     const vch=d.vch==null?'-':d.vch; const bookAmt=d.krec||d.kpay;
     const head='Matched to the book entry of '+swM(bookAmt)+' dated '+fmtD(d.kdate)+', voucher '+vch+(d.brk?', reference '+d.brk.split(',')[0]:'')+(d.kname?', party '+d.kname:'')+'.';
     if(d.U!=='Yes'){ const diff=Math.abs((d.dp||0)-(d.wd||0)-((d.krec||0)-(d.kpay||0)));
       if(d.how==='Reference match, amount differs'){ o.result='Same reference, different amount'; o.matched='Reference'; o.short='Reference agrees, amount differs against voucher '+vch; o.long='Paired with the book entry of '+swM(bookAmt)+' dated '+fmtD(d.kdate)+', voucher '+vch+'. The reference agrees but the amount differs by '+swM(diff)+', so it is the same transaction and one of the two amounts is wrong.\n'+dateSent; }
       else { o.result='Amount differs by a few rupees'; o.matched=same?'Date':''; o.short='Out by '+swM(diff)+' against voucher '+vch; o.long='Paired with the book entry of '+swM(bookAmt)+' dated '+fmtD(d.kdate)+', voucher '+vch+'. The amount is out by '+swM(diff)+'.\n'+dateSent+(o.altS?'\n'+o.altS:''); }
     } else {
-      if(same) o.result=refYes?'Date, amount and reference all the same':(nameYes?'Date, amount and party name the same':'Date and amount the same');
-      else o.result=(refYes?'Amount and reference the same, ':'Amount the same, ')+(gap>0?'book entry later than the bank statement':'book entry earlier than the bank statement');
+      if(same) o.result=refYes?'Date, amount and reference all the same':(chqYes?'Date, amount and cheque number the same':(nameYes?'Date, amount and party name the same':'Date and amount the same'));
+      else o.result=(refYes?'Amount and reference the same, ':(chqYes?'Amount and cheque number the same, ':'Amount the same, '))+(gap>0?'book entry later than the bank statement':'book entry earlier than the bank statement');
       o.status='Matched'; o.short=swFields(f)+'. Voucher '+vch+(same?'':'. '+swDatePhrase(gap));
       o.long=head+'\nWhat agrees: '+f.join(', ')+'.\n'+dateSent+(o.altS?'\n'+o.altS:''); }
     if(rv||d.how==='Reversal pair (bank and Books)'||/Reversal/.test(d.cat||'')) o.rev='Yes';
